@@ -1,0 +1,64 @@
+/* === Global Custom Cursor === */
+
+/* Base Dot */
+.custom-cursor-dot {
+    position: fixed;
+    top: -4px;
+    left: -4px;
+    width: 8px;
+    height: 8px;
+    background: #00d2ff;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    /* Translate happens on the element style, so we remove transition here for instantaneous tracking */
+    transition: width 0.3s ease, height 0.3s ease, background 0.3s ease;
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.8);
+}
+
+/* Outer Ring (Trails behind with transition) */
+.custom-cursor-ring {
+    position: fixed;
+    top: -20px;
+    left: -20px;
+    width: 40px;
+    height: 40px;
+    border: 1px solid rgba(0, 210, 255, 0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    backdrop-filter: blur(2px);
+    transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), width 0.3s, height 0.3s, border-color 0.3s, left 0.3s, top 0.3s;
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.2);
+}
+
+/* Hover States over clickable elements */
+.custom-cursor-dot.hovering {
+    background: #ff3300;
+    box-shadow: 0 0 15px rgba(255, 51, 0, 0.8);
+    transform: translate(-50%, -50%) scale(1.5) !important;
+}
+
+.custom-cursor-ring.hovering {
+    border-color: rgba(255, 51, 0, 0.8);
+    box-shadow: 0 0 25px rgba(255, 51, 0, 0.4);
+    width: 60px;
+    height: 60px;
+    top: -30px;
+    left: -30px;
+    backdrop-filter: blur(0px); /* remove blur to pop */
+}
+
+/* Click Action Animation */
+.custom-cursor-ring.clicked {
+    width: 30px;
+    height: 30px;
+    top: -15px;
+    left: -15px;
+    border-color: #b026ff;
+    box-shadow: 0 0 20px #b026ff;
+}
+
+.custom-cursor-dot.clicked {
+    background: white;
+}

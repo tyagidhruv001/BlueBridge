@@ -1,5 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import CustomCursor from './components/CustomCursor';
 
 // Pages lazily loaded to speed up dev and initial render
 const Landing = lazy(() => import('./pages/Landing'));
@@ -32,6 +33,7 @@ const PageLoader = () => (
 function App() {
   return (
     <Router>
+      <CustomCursor />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<Landing />} />
