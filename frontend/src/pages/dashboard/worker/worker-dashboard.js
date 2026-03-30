@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // WORKER DASHBOARD - COMPLETE IMPLEMENTATION
 // ============================================
 
@@ -18,10 +18,10 @@ window.acceptJob = async function (jobId) {
     if (typeof showLoading === 'function') showLoading('Accepting Job...');
     const user = Storage.get('BlueBridge_user');
 
-    // Update booking status to 'assigned' and set worker_id
+    // Update booking status to 'assigned' and set workerId
     await API.bookings.update(jobId, {
       status: 'assigned',
-      worker_id: user.uid,
+      workerId: user.uid,
       'timeline.assigned_at': new Date().toISOString()
     });
 
@@ -405,6 +405,26 @@ function subscribeToWorkerJobs(uid) {
   });
 }
 
+// Transform bookings to job format for compatibility
+const transformBookingToJob = (b) => ({
+  id: b.id,
+  serviceType: b.serviceType || b.service_type || 'General Service',
+  description: b.description || `${b.serviceType || b.service_type || 'General'} service requested`,
+  customerName: b.customerName || b.customer_name || 'Customer',
+  customerPhone: b.customerPhone || b.customer_phone || b.phone || '',
+  workerPhone: b.workerPhone || b.worker_phone || '',
+  customerAddress: b.address || b.location_name || b.customerAddress || 'Location not set',
+  price: b.price || b.amount || 0,
+  status: (b.status || 'pending').toLowerCase(),
+  scheduledDate: b.date || (b.scheduled_time ? new Date(b.scheduled_time).toLocaleDateString() : 'Today'),
+  scheduledTime: b.time || (b.scheduled_time ? new Date(b.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ASAP'),
+  bookingId: b.id || b.bookingId,
+  isEmergency: b.is_emergency || b.isEmergency || false,
+  acceptedAt: b.timeline?.assigned_at || b.acceptedAt || b.timestamp,
+  completedAt: b.timeline?.completed_at,
+  createdAt: b.createdAt || b.timestamp
+});
+
 async function refreshDashboardData() {
   const user = Storage.get('BlueBridge_user');
   if (!user || !user.uid) return;
@@ -459,32 +479,12 @@ async function refreshDashboardData() {
       console.warn('Failed to fetch available bookings:', availableBookingsResult.reason);
     }
 
-    // Transform bookings to job format for compatibility
-    const transformBookingToJob = (b) => ({
-      id: b.id,
-      serviceType: b.serviceType || b.service_type || 'General Service',
-      description: b.description || `${b.serviceType || b.service_type || 'General'} service requested`,
-      customerName: b.customerName || b.customer_name || 'Customer',
-      customerPhone: b.customerPhone || b.customer_phone || b.phone || '',
-      workerPhone: b.workerPhone || b.worker_phone || '',
-      customerAddress: b.address || b.location_name || b.customerAddress || 'Location not set',
-      price: b.price || b.amount || 0,
-      status: (b.status || 'pending').toLowerCase(),
-      scheduledDate: b.date || (b.scheduled_time ? new Date(b.scheduled_time).toLocaleDateString() : 'Today'),
-      scheduledTime: b.time || (b.scheduled_time ? new Date(b.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'ASAP'),
-      bookingId: b.id || b.bookingId,
-      isEmergency: b.is_emergency || b.isEmergency || false,
-      acceptedAt: b.timeline?.assigned_at || b.acceptedAt || b.timestamp,
-      completedAt: b.timeline?.completed_at,
-      createdAt: b.createdAt || b.timestamp
-    });
-
     // Transform all bookings
     const transformedMyBookings = myBookings.map(transformBookingToJob);
     const transformedAvailableBookings = availableBookings.map(transformBookingToJob);
 
     // Assign to State
-    dashboardData.jobs.active = transformedMyBookings.filter(j => j.status === 'in_progress');
+    dashboardData.jobs.active = transformedMyBookings.filter(j => j.status === 'assigned' || j.status === 'in_progress');
     dashboardData.jobs.completed = transformedMyBookings.filter(j => j.status === 'completed');
 
     // Combine pending (deduplicated)
@@ -1990,7 +1990,7 @@ async function fetchAndRenderActiveJobs() {
     // Remove duplicates (if any)
     const uniqueBookings = Array.from(new Map(allBookings.map(b => [b.id, b])).values());
     const allJobs = uniqueBookings.map(transformBookingToJob);
-    const activeJobs = allJobs.filter(j => j.status === 'in_progress');
+    const activeJobs = allJobs.filter(j => j.status === 'assigned' || j.status === 'in_progress');
 
     // Update Cache & UI
     Storage.set('worker_active_jobs_cache', activeJobs);

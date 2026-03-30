@@ -12,17 +12,10 @@
     overflow: hidden;
 }
 
-.auth-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(at 0% 0%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, var(--primary-800) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, var(--primary-800) 0px, transparent 50%);
-    opacity: 0.4;
-    z-index: 0;
+.auth-layout {
+    width: 100%;
+    position: relative;
+    /* Track cursor vars already on parent */
 }
 
 
@@ -73,10 +66,11 @@
 .auth-header h1 {
     font-size: var(--font-size-3xl);
     margin-bottom: var(--spacing-sm);
+    color: white;
 }
 
 .auth-header p {
-    color: var(--text-tertiary);
+    color: rgba(255, 255, 255, 0.7);
     font-size: var(--font-size-base);
 }
 
@@ -97,9 +91,33 @@
     pointer-events: none;
 }
 
-.input-with-icon .input-field {
+.input-field {
+    /* Override base globals for Auth/Deep Space forms */
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(8px);
+    color: white !important;
     padding-left: 3rem;
     padding-right: 3rem;
+    transition: all 0.3s ease;
+}
+
+.input-field:focus {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.05) !important;
+}
+
+.input-label {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    font-size: 1.25rem;
+    pointer-events: none;
+    z-index: 5;
 }
 
 .toggle-password {
@@ -111,10 +129,26 @@
     font-size: 1.25rem;
     padding: 0.25rem;
     transition: transform var(--transition-fast);
+    z-index: 5;
 }
 
-.toggle-password:hover {
-    transform: scale(1.1);
+/* Let the role color inject the focus state if we want to be fancy */
+.cyber-blue .input-field:focus {
+    border-color: #00d2ff !important;
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.2) !important;
+}
+
+.neon-orange .input-field:focus {
+    border-color: #ff3300 !important;
+    box-shadow: 0 0 15px rgba(255, 51, 0, 0.2) !important;
+}
+
+/* Contextual Link Colors */
+.cyber-blue .link {
+    color: #00d2ff;
+}
+.neon-orange .link {
+    color: #ff3300;
 }
 
 .form-options {
@@ -130,7 +164,7 @@
     align-items: center;
     gap: var(--spacing-sm);
     cursor: pointer;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .checkbox-label input[type="checkbox"] {
@@ -505,4 +539,339 @@
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(-4px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   CHOOSE YOUR PATH - "NEVER BEFORE" REDESIGN
+   ============================================ */
+
+/* The Deep Space Background */
+.modern-deep-space {
+    background: #02040a;
+    position: relative;
+    overflow: hidden;
+}
+
+.modern-deep-space::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+        radial-gradient(circle at var(--mx, 50%) var(--my, 50%), rgba(20, 30, 80, 0.4) 0%, transparent 60%),
+        radial-gradient(circle at calc(100% - var(--mx, 50%)) calc(100% - var(--my, 50%)), rgba(80, 20, 80, 0.15) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    transition: background 0.5s ease-out;
+}
+
+/* Ambient Orbs */
+.ambient-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.5;
+    z-index: 1;
+    animation: orbDrift 20s infinite ease-in-out alternate;
+}
+
+.orb-blue {
+    top: -10%; left: -10%;
+    width: 600px; height: 600px;
+    background: rgba(0, 114, 255, 0.3);
+}
+
+.orb-purple {
+    bottom: -20%; right: -10%;
+    width: 700px; height: 700px;
+    background: rgba(147, 51, 234, 0.25);
+    animation-delay: -5s;
+}
+
+.orb-orange {
+    top: 40%; left: 40%;
+    width: 500px; height: 500px;
+    background: rgba(255, 120, 0, 0.15);
+    animation-delay: -10s;
+}
+
+@keyframes orbDrift {
+    0% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(50px, 50px) scale(1.1); }
+    100% { transform: translate(-50px, -20px) scale(0.9); }
+}
+
+/* Modal Structure */
+.ultra-glass {
+    position: relative;
+    z-index: 10;
+    max-width: 1100px;
+    width: 90%;
+    margin: auto;
+    background: rgba(10, 12, 20, 0.5);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.5);
+    border-radius: 30px;
+    padding: 4rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Header Tweaks */
+.cyber-header {
+    text-align: center;
+    margin-bottom: 3.5rem;
+    position: relative;
+    width: 100%;
+}
+
+.modern-back {
+    position: absolute;
+    left: 0;
+    top: 0;
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    transition: color 0.3s;
+}
+
+.modern-back:hover {
+    color: #fff;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.glowing-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    margin-bottom: 2rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.gradient-text-silver {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a5b0 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+    letter-spacing: -1px;
+}
+
+.subtitle {
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Options Grid */
+.role-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    width: 100%;
+    gap: 2rem;
+    perspective: 1000px;
+}
+
+/* Interactive 3D Card */
+.role-card-3d {
+    position: relative;
+    background: rgba(15, 18, 25, 0.7);
+    border-radius: 24px;
+    padding: 3rem 2rem 2rem;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    isolation: isolate;
+}
+
+.role-card-3d::before {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    background: linear-gradient(180deg, rgba(25, 30, 40, 0.8) 0%, rgba(10, 12, 18, 0.9) 100%);
+    border-radius: 23px;
+    z-index: -1;
+}
+
+/* Border Glow Default */
+.card-border-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), transparent);
+    z-index: -2;
+    padding: 1px;
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    transition: all 0.4s ease;
+}
+
+/* Hover States for Cards */
+.cyber-blue:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(0, 114, 255, 0.15);
+}
+
+.cyber-blue:hover .card-border-glow {
+    background: linear-gradient(135deg, #00d2ff, #3a7bd5);
+    box-shadow: 0 0 20px #00d2ff, inset 0 0 20px #00d2ff;
+}
+
+.neon-orange:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(255, 78, 80, 0.15);
+}
+
+.neon-orange:hover .card-border-glow {
+    background: linear-gradient(135deg, #f9d423, #ff4e50);
+    box-shadow: 0 0 20px #ff4e50, inset 0 0 20px #ff4e50;
+}
+
+/* Content Layout inside Card */
+.role-card-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    z-index: 2;
+}
+
+/* Icon Wrapper */
+.icon-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.4s ease;
+}
+
+.icon-glow {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    opacity: 0;
+    filter: blur(15px);
+    transition: opacity 0.4s ease;
+    z-index: -1;
+}
+
+.cyber-blue .icon-glow { background: rgba(0, 210, 255, 0.5); }
+.neon-orange .icon-glow { background: rgba(255, 78, 80, 0.5); }
+
+.cyber-blue:hover .icon-wrapper {
+    transform: scale(1.1) rotate(-5deg);
+    border-color: rgba(0, 210, 255, 0.3);
+    color: #00d2ff;
+}
+.neon-orange:hover .icon-wrapper {
+    transform: scale(1.1) rotate(5deg);
+    border-color: rgba(255, 78, 80, 0.3);
+    color: #ff4e50;
+}
+
+.cyber-blue:hover .icon-glow, .neon-orange:hover .icon-glow {
+    opacity: 1;
+}
+
+/* Text & Typography inside Card */
+.role-card-3d h2 {
+    font-size: 2rem;
+    color: #fff;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+}
+
+.role-card-3d p {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 1rem;
+    line-height: 1.5;
+    margin-bottom: 2rem;
+}
+
+/* Features List */
+.modern-features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 3rem 0;
+    flex-grow: 1;
+}
+
+.modern-features li {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.cyber-blue .modern-features li span { color: #00d2ff; font-size: 0.8rem; }
+.neon-orange .modern-features li span { color: #ff4e50; font-size: 0.8rem; }
+
+/* The Bottom Action Indicator (replaces buttons) */
+.action-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.85rem;
+    transition: color 0.3s;
+}
+
+.cyber-blue:hover .action-indicator { color: #00d2ff; }
+.neon-orange:hover .action-indicator { color: #ff4e50; }
+
+.action-indicator svg {
+    transition: transform 0.3s ease;
+}
+
+.role-card-3d:hover .action-indicator svg {
+    transform: translateX(5px);
+}
+
+/* Mobile Responsiveness for Redesign */
+@media (max-width: 900px) {
+    .ultra-glass {
+        padding: 2.5rem 1.5rem;
+        border-radius: 20px;
+    }
+
+    .role-options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .gradient-text-silver {
+        font-size: 2.2rem;
+    }
+    
+    .cyber-header {
+        margin-bottom: 2rem;
+    }
+    
+    .modern-back {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 1rem;
+    }
 }

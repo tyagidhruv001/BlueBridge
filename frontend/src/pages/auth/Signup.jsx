@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Storage } from '../../utils/utils';
 import { API } from '../../api/api';
@@ -20,6 +20,14 @@ const Signup = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
     const [fieldErrors, setFieldErrors] = useState({});
+
+    // Mouse tracking for ambient background
+    const [mousePos, setMousePos] = useState({ x: 0.5, y: 0.5 });
+    const handleMouseMove = (e) => {
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        setMousePos({ x, y });
+    };
 
     useEffect(() => {
         if (!role) {
@@ -83,10 +91,28 @@ const Signup = () => {
     };
 
     const roleText = role === 'customer' ? 'Customer' : 'Worker';
+    const cardColorClass = role === 'customer' ? 'cyber-blue' : 'neon-orange';
+    const btnColorClass = role === 'customer' ? 'btn-neon-blue' : 'btn-neon-orange';
 
     return (
-        <div className="auth-container gradient-mesh">
-            <div className="auth-card card-glass">
+        <div 
+            className="modern-deep-space auth-layout"
+            onMouseMove={handleMouseMove}
+            style={{
+                '--mx': `${mousePos.x * 100}%`,
+                '--my': `${mousePos.y * 100}%`,
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative'
+            }}
+        >
+            <div className="ambient-orb orb-primary" style={{top: '10%', right: '15%', opacity: 0.8}}></div>
+            <div className="ambient-orb orb-secondary" style={{bottom: '5%', left: '10%', opacity: 0.6}}></div>
+
+            <div className={`auth-card role-card-3d ${cardColorClass} login-card`} style={{ zIndex: 10, width: '100%', maxWidth: '440px', margin: '2rem 1rem' }}>
                 <div className="auth-header">
                     <Link to="/auth/role-select?mode=signup" className="back-link">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -164,7 +190,7 @@ const Signup = () => {
                         {fieldErrors.terms && <span className="error-message">{fieldErrors.terms}</span>}
                     </div>
 
-                    <button type="submit" className="btn btn-primary btn-lg" disabled={isLoading || !acceptedTerms}>
+                    <button type="submit" className={`btn ${btnColorClass} btn-lg`} disabled={isLoading || !acceptedTerms} style={{ width: '100%', marginTop: '1.5rem' }}>
                         {!isLoading ? <span>Create Account</span> : <div className="spinner spinner-sm"></div>}
                     </button>
 
@@ -174,11 +200,6 @@ const Signup = () => {
                 </form>
             </div>
 
-            <div className="auth-bg-shapes">
-                <div className="shape shape-1"></div>
-                <div className="shape shape-2"></div>
-                <div className="shape shape-3"></div>
-            </div>
         </div>
     );
 };
