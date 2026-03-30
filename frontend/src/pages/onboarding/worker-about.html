@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Onboarding - BlueBridge</title>
+    
+    
+    
+</head>
+
+<body>
+    <div class="onboarding-container gradient-mesh">
+        <div class="onboarding-card card-glass">
+            <div class="onboarding-header">
+                <div class="logo">
+                    <span class="logo-icon">🔧</span>
+                    <span class="logo-text">BlueBridge</span>
+                </div>
+                <h1>Worker Profile Setup</h1>
+                <p>Complete your profile to start receiving jobs</p>
+            </div>
+
+            <form class="onboarding-form" id="workerOnboardingForm">
+                <div class="input-group">
+                    <label class="input-label">Select Your Skills (Select all that apply)</label>
+                    <div class="skills-grid">
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Mechanic">
+                            <span>🔧 Mechanic</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Plumber">
+                            <span>🚰 Plumber</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Electrician">
+                            <span>⚡ Electrician</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Carpenter">
+                            <span>🪚 Carpenter</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Painter">
+                            <span>🎨 Painter</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Home Cleaning">
+                            <span>🧹 Home Cleaning</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="AC Repair">
+                            <span>❄️ AC Repair</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Gardening">
+                            <span>🌱 Gardening</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Appliances">
+                            <span>📺 Appliances</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Pest Control">
+                            <span>🐜 Pest Control</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Beauty & Spa">
+                            <span>💆 Beauty & Spa</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Packers & Movers">
+                            <span>📦 Packers & Movers</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="RO & Water">
+                            <span>💧 RO & Water</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Home Security">
+                            <span>🛡️ Home Security</span>
+                        </label>
+                        <label class="skill-checkbox">
+                            <input type="checkbox" value="Interior Design">
+                            <span>🛋️ Interior Design</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Experience Level</label>
+                    <select class="input-field" id="experience" required>
+                        <option value="">Select experience</option>
+                        <option value="beginner">Beginner (0-2 years)</option>
+                        <option value="skilled">Skilled (2-5 years)</option>
+                        <option value="expert">Expert (5+ years)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Location</label>
+                    <input type="text" class="input-field" id="location" placeholder="Enter your city" required>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Hourly Rate (₹)</label>
+                    <input type="number" class="input-field" id="hourlyRate" placeholder="e.g., 200" min="50" required>
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">Government ID (Aadhaar/PAN)</label>
+                    <input type="file" class="input-field" id="govId" accept="image/*,.pdf">
+                    <span class="input-helper">Upload for verification (optional for demo)</span>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">Complete Setup</button>
+            </form>
+        </div>
+    </div>
+
+    
+    
+    
+    
+</body>
+
+</html>

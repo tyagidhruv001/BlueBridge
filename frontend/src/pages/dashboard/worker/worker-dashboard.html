@@ -1,0 +1,125 @@
+﻿<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div class="logo">
+            <span class="logo-icon"><i class="fas fa-hammer"></i></span>
+            <span class="logo-text">BlueBridge</span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+            <i class="fas fa-chevron-left toggle-icon"></i>
+        </button>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <h3 class="nav-section-title">Work</h3>
+            <a href="#" class="nav-link" data-page="home">
+                <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                <span class="nav-text">Overview</span>
+            </a>
+            <a href="#" class="nav-link" data-page="profile">
+                <span class="nav-icon"><i class="fas fa-user"></i></span>
+                <span class="nav-text">My Profile</span>
+            </a>
+            <a href="#" class="nav-link" data-page="job-requests">
+                <span class="nav-icon"><i class="fas fa-envelope-open-text"></i></span>
+                <span class="nav-text">Job Requests</span>
+                <span class="badge badge-primary" id="requestCount">3</span>
+            </a>
+            <a href="#" class="nav-link" data-page="active-jobs">
+                <span class="nav-icon"><i class="fas fa-bolt"></i></span>
+                <span class="nav-text">Active Jobs</span>
+            </a>
+            <a href="#" class="nav-link" data-page="job-history">
+                <span class="nav-icon"><i class="fas fa-clipboard-list"></i></span>
+                <span class="nav-text">Job History</span>
+            </a>
+            <a href="#" class="nav-link" data-page="availability">
+                <span class="nav-icon"><i class="fas fa-calendar-alt"></i></span>
+                <span class="nav-text">Availability</span>
+            </a>
+        </div>
+
+        <div class="nav-section">
+            <h3 class="nav-section-title">Earnings</h3>
+            <a href="#" class="nav-link" data-page="earnings">
+                <span class="nav-icon"><i class="fas fa-wallet"></i></span>
+                <span class="nav-text">My Earnings</span>
+            </a>
+            <a href="#" class="nav-link" data-page="wallet">
+                <span class="nav-icon"><i class="fas fa-credit-card"></i></span>
+                <span class="nav-text">Wallet</span>
+            </a>
+            <a href="#" class="nav-link" data-page="ratings">
+                <span class="nav-icon"><i class="fas fa-star"></i></span>
+                <span class="nav-text">Ratings & Reviews</span>
+            </a>
+
+        </div>
+
+
+        <div class="nav-section">
+            <h3 class="nav-section-title">Account</h3>
+            <a href="#" class="nav-link" data-page="support">
+                <span class="nav-icon"><i class="fas fa-life-ring"></i></span>
+                <span class="nav-text">Support</span>
+            </a>
+
+            <a href="#" class="nav-link" data-page="settings">
+                <span class="nav-icon"><i class="fas fa-cog"></i></span>
+                <span class="nav-text">Settings</span>
+            </a>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-profile">
+            <div class="user-avatar"><i class="fas fa-user-hard-hat"></i></div>
+            <div class="user-info">
+                <div class="user-name" id="userName">Worker</div>
+                <div class="user-role" id="userRole">Service Provider</div>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content -->
+<main class="main-content">
+    <header class="topbar">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M3 12H21M3 6H21M3 18H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+            </svg>
+        </button>
+
+        <div class="topbar-status">
+            <div class="status-indicator">
+                <span class="status-dot status-online" id="statusDot"></span>
+                <span class="status-text" id="statusText">Available</span>
+            </div>
+            <!-- Live Tracking Indicator -->
+            <div id="liveTrackingIndicator"
+                style="display: none; align-items: center; gap: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem; background: rgba(57, 255, 20, 0.1); border: 1px solid rgba(57, 255, 20, 0.3); border-radius: 20px;">
+                <span
+                    style="width: 8px; height: 8px; background: var(--neon-green); border-radius: 50%; animation: pulse 2s infinite;"></span>
+                <span style="color: var(--neon-green); font-size: 0.85rem; font-weight: 600;">Live Tracking</span>
+            </div>
+            <button class="btn btn-sm btn-secondary" id="toggleAvailability">Go Offline</button>
+        </div>
+
+        <div class="topbar-actions" style="margin-left: auto;">
+
+
+            <button type="button" id="headerSignOutBtn" onclick="window.performLogout(event)"
+                style="background: none; border: none; color: #ff4444; margin-left: 1rem; display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 600; padding: 0.5rem;">
+                <span class="d-none d-md-inline">Sign Out</span>
+                <i class="fas fa-sign-out-alt"></i>
+            </button>
+        </div>
+    </header>
+
+    <div class="content-area" id="contentArea">
+        <!-- Dynamic content will be loaded here -->
+    </div>
+</main>
+

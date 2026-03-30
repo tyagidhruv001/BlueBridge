@@ -1,0 +1,693 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Service - BlueBridge Professionals</title>
+    
+    
+    
+    <style>
+        :root {
+            --glass-bg: rgba(15, 23, 42, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background: radial-gradient(circle at top right, #070b14, #0f172a);
+            min-height: 100vh;
+        }
+
+        .booking-container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .booking-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.6s ease-out;
+        }
+
+        .booking-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .booking-steps {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3rem;
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        .booking-steps::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--glass-border);
+            z-index: 1;
+        }
+
+        .step-item {
+            position: relative;
+            z-index: 2;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #1e293b;
+            border: 2px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            transition: all 0.3s ease;
+        }
+
+        .step-item.active {
+            background: var(--neon-blue);
+            border-color: var(--neon-blue);
+            color: #fff;
+            box-shadow: 0 0 15px var(--neon-blue);
+        }
+
+        .step-item.completed {
+            background: var(--neon-green);
+            border-color: var(--neon-green);
+            color: #fff;
+        }
+
+        .booking-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            min-height: 400px;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        .step-content {
+            display: none;
+        }
+
+        .step-content.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .input-group input,
+        .input-group select,
+        .input-group textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1rem;
+            color: #fff;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--neon-blue);
+            background: rgba(255, 255, 255, 0.08);
+            outline: none;
+        }
+
+        /* Worker Selection Styles */
+        .worker-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .worker-selection-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            gap: 1rem;
+            position: relative;
+        }
+
+        .worker-selection-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--neon-blue);
+            transform: translateY(-2px);
+        }
+
+        .worker-selection-card.selected {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+
+        .card-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .card-info {
+            flex: 1;
+        }
+
+        .worker-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .worker-meta {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .worker-price {
+            font-weight: bold;
+            color: var(--neon-green);
+        }
+
+        /* Summary Step Styles */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 2rem;
+        }
+
+        .summary-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .summary-item h3 {
+            font-size: 1rem;
+            color: var(--text-tertiary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .summary-item p {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .price-breakdown {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid var(--neon-blue);
+        }
+
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .price-total {
+            border-top: 1px solid var(--glass-border);
+            margin-top: 1rem;
+            padding-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        /* Navigation Buttons */
+        .booking-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2.5rem;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .tracking-status {
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.4rem;
+        }
+
+        .tracking-live {
+            background: rgba(57, 255, 20, 0.1);
+            color: var(--neon-green);
+            border: 1px solid rgba(57, 255, 20, 0.2);
+        }
+
+        .tracking-unavailable {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-tertiary);
+            border: 1px solid var(--glass-border)
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .worker-profile-modal {
+            background: #0f172a;
+            border: 1px solid var(--glass-border);
+            border-radius: 28px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: none;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: #ef4444;
+        }
+
+        .modal-hero {
+            padding: 3rem 2rem 2rem;
+            background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), transparent);
+            text-align: center;
+        }
+
+        .modal-avatar-lg {
+            width: 100px;
+            height: 100px;
+            border-radius: 24px;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            font-weight: 900;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-name-lg {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-badges {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .modal-body {
+            padding: 0 2rem 2rem;
+        }
+
+        .modal-section {
+            margin-bottom: 2rem;
+        }
+
+        .modal-section h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--neon-blue);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .skill-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+
+        .skill-tag {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--neon-blue);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .bio-text {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .modal-footer {
+            padding: 2rem;
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-modal {
+            flex: 1;
+            padding: 1.25rem;
+            border-radius: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .payment-option {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .payment-option:hover {
+            border-color: var(--neon-blue);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .payment-option.selected {
+            border-color: var(--neon-blue);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .payment-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="booking-container">
+        <header class="booking-header">
+            <h1 id="service-title-display">Book <span class="text-gradient">Professional</span></h1>
+            <p class="text-secondary">Verified experts at your service</p>
+        </header>
+
+        <div class="booking-steps">
+            <div class="step-item active" id="step-1">1</div>
+            <div class="step-item" id="step-2">2</div>
+            <div class="step-item" id="step-3">3</div>
+            <div class="step-item" id="step-4">4</div>
+        </div>
+
+        <div class="booking-card">
+            <!-- Step 1: Schedule & Location -->
+            <div class="step-content active" id="content-1">
+                <h2 class="mb-4">Schedule Your Service</h2>
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Preferred Date</label>
+                        <input type="date" id="booking-date">
+                    </div>
+                    <div class="input-group">
+                        <label>Preferred Time</label>
+                        <select id="booking-time">
+                            <option value="09:00">09:00 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="12:00">12:00 PM</option>
+                            <option value="14:00">02:00 PM</option>
+                            <option value="15:00">03:00 PM</option>
+                            <option value="16:00">04:00 PM</option>
+                        </select>
+                    </div>
+                    <div class="input-group full-width">
+                        <label>Service Category</label>
+                        <select id="booking-category">
+                            <option value="Mechanic">Mechanic</option>
+                            <option value="Plumber">Plumber</option>
+                        </select>
+                    </div>
+                    <div class="input-group full-width">
+                        <label>Service Address</label>
+                        <textarea id="booking-address" rows="3"
+                            placeholder="Enter full address where service is needed..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Choose Professional -->
+            <div class="step-content" id="content-2">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Select a Professional</h2>
+                </div>
+                <div class="worker-list" id="worker-list">
+                    <!-- Workers will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Step 3: Payment Method -->
+            <div class="step-content" id="content-3">
+                <h2 class="mb-4">How would you like to pay?</h2>
+                <div class="payment-options">
+                    <div class="payment-option selected" onclick="selectPayment('wallet')">
+                        <div class="payment-icon"><i class="fas fa-wallet text-success"></i></div>
+                        <div style="flex:1;">
+                            <div class="font-bold">BlueBridge Wallet</div>
+                            <div class="text-xs text-tertiary" id="wallet-balance-info">Balance: Loading...</div>
+                        </div>
+                        <div class="selected-check"><i class="fas fa-check-circle text-blue-500"></i></div>
+                    </div>
+                    <div class="payment-option" onclick="selectPayment('cash')">
+                        <div class="payment-icon"><i class="fas fa-money-bill-wave text-blue-500"></i></div>
+                        <div style="flex:1;">
+                            <div class="font-bold">Pay After Service (Cash/UPI)</div>
+                            <div class="text-xs text-tertiary">Pay directly to our professional</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="summary-item mt-8">
+                    <h3>Booking Summary</h3>
+                    <div class="price-row">
+                        <span>Professional Base Rate</span>
+                        <span id="summary-base-rate">₹0</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Service Fee</span>
+                        <span>₹49</span>
+                    </div>
+                    <div class="price-total">
+                        <span>Total Estimate</span>
+                        <span id="summary-total-price">₹0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 4: Final Confirmation -->
+            <div class="step-content" id="content-4">
+                <div class="text-center py-8">
+                    <div style="font-size: 4rem; color: var(--neon-green); margin-bottom: 2rem;">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <h2 class="mb-4">Confirm Your Booking</h2>
+                    <p class="text-secondary mb-8">Please review your booking details before confirming.</p>
+
+                    <div class="text-left max-w-md mx-auto">
+                        <div class="summary-item">
+                            <h3>Service Details</h3>
+                            <p id="final-service-desc"></p>
+                            <p id="final-date-time" class="text-sm text-tertiary mt-2"></p>
+                        </div>
+                        <div class="summary-item">
+                            <h3>Address</h3>
+                            <p id="final-address"></p>
+                        </div>
+                        <div class="summary-item">
+                            <h3>Professional</h3>
+                            <p id="final-worker-name"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="booking-actions">
+                <button class="btn btn-secondary" id="prev-btn" style="visibility: hidden;">Back</button>
+                <button class="btn btn-primary" id="next-btn">Next Step</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Worker Profile Modal -->
+    <div class="modal-overlay" id="worker-profile-modal">
+        <div class="worker-profile-modal">
+            <button class="modal-close" onclick="closeWorkerProfile()"><i class="fas fa-times"></i></button>
+
+            <div class="modal-hero">
+                <div class="modal-avatar-lg" id="modal-avatar">WP</div>
+                <h2 class="modal-name-lg" id="modal-name">Worker Name</h2>
+                <div class="modal-badges">
+                    <div class="modal-badge" id="modal-category">Electrician</div>
+                    <div class="modal-badge"><i class="fas fa-shield-check text-success"></i> Background Verified</div>
+                </div>
+                <div id="modal-rating" style="margin-bottom: 1rem; color: #fbbf24; font-weight: bold;">
+                    <!-- Rating here -->
+                </div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--neon-green);" id="modal-rate">₹450/hr
+                </div>
+            </div>
+
+            <div class="modal-body">
+                <div class="modal-section">
+                    <h3><i class="fas fa-info-circle"></i> About Professional</h3>
+                    <p class="bio-text" id="modal-bio">No details provided.</p>
+                </div>
+
+                <div class="modal-section">
+                    <h3><i class="fas fa-tools"></i> Skills & Expertise</h3>
+                    <div class="skill-tags" id="modal-skills">
+                        <!-- Skills -->
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <h3><i class="fas fa-map-marker-alt"></i> Primary Location</h3>
+                    <p class="bio-text" id="modal-location">Local Service Area</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" style="flex: 0.5;" onclick="closeWorkerProfile()">Close</button>
+                <button class="btn btn-primary" id="modal-book-btn">Select & Continue</button>
+            </div>
+        </div>
+    </div>
+
+    
+    
+    
+</body>
+
+</html>

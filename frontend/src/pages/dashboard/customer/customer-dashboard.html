@@ -1,0 +1,518 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Dashboard | BlueBridge</title>
+    <!-- Fonts -->
+
+
+
+
+
+    <!-- Base Styles -->
+
+
+
+    <!-- Leaflet CSS for Maps -->
+
+
+    <!-- Component Styles -->
+
+</head>
+
+<body class="bg-shade-dark">
+    <div class="app-container">
+        <div class="dashboard-layout">
+            <!-- Sidebar Navigation -->
+            <div class="sidebar-overlay" id="sidebar-overlay"
+                onclick="document.getElementById('sidebar').classList.remove('active'); this.classList.remove('active');">
+            </div>
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-header">
+                    <div class="logo-container">
+                        <i class="fas fa-toolbox"></i>
+                        <span class="logo-text">KARYA<span>SETU</span></span>
+                    </div>
+                    <button id="sidebarToggle" class="sidebar-toggle-btn" title="Toggle Sidebar">
+                        <i class="fas fa-chevron-left toggle-icon"></i>
+                    </button>
+                </div>
+
+                <nav class="sidebar-nav">
+                    <a href="#" class="nav-item active" data-tab="overview">
+                        <i class="fas fa-home"></i>
+                        <span>Overview</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="book-service">
+                        <i class="fas fa-calendar-plus"></i>
+                        <span>Book Service</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="nearby-workers">
+                        <i class="fas fa-map-location-dot"></i>
+                        <span>Nearby Workers</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="my-bookings">
+                        <i class="fas fa-list-check"></i>
+                        <span>My Bookings</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="wallet">
+                        <i class="fas fa-wallet"></i>
+                        <span>Wallet & Cards</span>
+                    </a>
+                    <a href="../test-ai-verification.html" class="nav-item">
+                        <i class="fas fa-id-card"></i>
+                        <span>AI Verification</span>
+                    </a>
+
+                    <a href="#" class="nav-item" data-tab="profile">
+                        <i class="fas fa-user-circle"></i>
+                        <span>My Profile</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="support">
+                        <i class="fas fa-headset"></i>
+                        <span>Support</span>
+                    </a>
+                    <a href="#" class="nav-item" data-tab="settings">
+                        <i class="fas fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </nav>
+
+                <div class="sidebar-footer" style="padding: 1.5rem; border-top: 1px solid var(--glass-border);">
+                    <!-- User Profile (Moved from Header) -->
+                    <div class="user-profile-sidebar"
+                        style="display: flex; align-items: center; gap: 0.75rem; color: #fff; background: rgba(255, 255, 255, 0.05); padding: 10px; border-radius: 12px; border: 1px solid var(--glass-border);">
+
+                        <div class="avatar-container" style="position: relative; cursor: pointer;"
+                            onclick="document.getElementById('profile-upload').click()">
+                            <div class="avatar" id="user-avatar-initials"
+                                style="width: 45px; height: 45px; font-size: 1.1rem; background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple)); border: 2px solid rgba(255,255,255,0.2);">
+                                DT</div>
+                            <img id="user-avatar-img" src="" alt="Profile"
+                                style="display: none; width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid var(--neon-blue);">
+
+                            <div class="avatar-overlay"
+                                style="position: absolute; bottom: -2px; right: -2px; background: var(--neon-green); width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #1a1a1a;">
+                                <i class="fas fa-camera" style="font-size: 9px; color: #000;"></i>
+                            </div>
+                        </div>
+
+                        <input type="file" id="profile-upload" hidden accept="image/*">
+
+                        <div class="user-info-text">
+                            <h4 id="user-display-name" style="font-size: 1rem; margin: 0; font-weight: 700;">Dhruv Tyagi
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Dashboard Area -->
+            <main class="main-content">
+                <!-- Topbar -->
+                <header class="top-header">
+                    <div class="header-left">
+                        <div class="logo-container desktop-only" style="margin-right: 2rem;">
+                            <i class="fas fa-toolbox"></i>
+                            <span class="logo-text">KARYA<span>SETU</span></span>
+                        </div>
+                        <button id="menu-toggle" class="mobile-only"><i class="fas fa-bars"></i></button>
+                        <div class="search-bar">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="global-search" placeholder="Search services, workers...">
+                        </div>
+                    </div>
+
+                    <div class="user-actions">
+
+
+                        <!-- Logout Button (Moved from Sidebar) -->
+                        <button type="button" id="logout-btn-header" onclick="window.performLogout(event)" class="btn btn-ghost"
+                            style="background: none; border: none; color: var(--neon-pink); display: flex; align-items: center; gap: 0.5rem; cursor: pointer; padding: 0.5rem;">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span class="desktop-only">Sign Out</span>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Content Area -->
+                <div id="content-pages">
+                    <!-- Overview Tab -->
+                    <section id="overview-tab" class="tab-content section-container">
+                        <div class="overview-grid-layout">
+                            <div class="overview-main">
+                                <!-- New Welcome Banner (Cyan Box) -->
+                                <div class="welcome-banner">
+                                    <div class="welcome-text">
+                                        <h1>Welcome back, <span id="welcome-name">Dhruv</span>! 👋</h1>
+                                        <p>Find skilled workers for your needs today</p>
+                                    </div>
+                                    <button class="banner-btn"
+                                        onclick="document.querySelector('[data-tab=book-service]').click()">
+                                        Book Service
+                                    </button>
+                                </div>
+
+                                <!-- Dashboard Stats -->
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-icon icon-blue">
+                                            <i class="fas fa-file-invoice"></i> <!-- Changed icon -->
+                                        </div>
+                                        <div class="stat-value" id="stat-active-count">0</div>
+                                        <div class="stat-label">Active Bookings</div>
+                                        <div style="font-size: 0.75rem; color: var(--neon-green); margin-top: 5px;">+2
+                                            this
+                                            week</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon icon-green">
+                                            <i class="fas fa-check-square"></i> <!-- Changed icon -->
+                                        </div>
+                                        <div class="stat-value" id="stat-completed-count">0</div>
+                                        <div class="stat-label">Completed</div>
+                                        <div style="font-size: 0.75rem; color: var(--neon-green); margin-top: 5px;">+5
+                                            this
+                                            month</div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon icon-purple" style="cursor: pointer;"
+                                            onclick="document.querySelector('[data-tab=wallet]').click()">
+                                            <i class="fas fa-wallet"></i>
+                                        </div>
+                                        <div class="stat-value" id="stat-wallet-bal">₹1250</div>
+                                        <!-- Hardcoded for now, JS will update -->
+                                        <div class="stat-label">Wallet Balance</div>
+                                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">
+                                            Click to
+                                            add funds</div>
+                                    </div>
+
+                                </div>
+
+                                <!-- Featured Active Booking -->
+                                <div id="overview-active-booking-container">
+                                    <!-- Dynamic content for active booking -->
+                                    <div class="active-booking-card skeleton">
+                                        <p>Loading active bookings...</p>
+                                    </div>
+                                </div>
+
+                                <!-- Bottom Sections: Quick Services & Recent Activity -->
+                                <div class="bottom-sections-grid">
+                                    <!-- Left: Quick Services -->
+                                    <div class="quick-services-container">
+                                        <div class="section-header">
+                                            <h3>Quick Services</h3>
+                                            <a href="#" class="view-all-link"
+                                                onclick="document.querySelector('[data-tab=book-service]').click()">View
+                                                All</a>
+                                        </div>
+                                        <div class="quick-services-grid" id="quick-services-grid">
+                                            <!-- Static initial content, JS can enhance -->
+                                            <div class="quick-service-card" onclick="openBookingPage('Mechanic')">
+                                                <div class="quick-service-icon">🔧</div>
+                                                <h4>Mechanic</h4>
+                                            </div>
+                                            <div class="quick-service-card" onclick="openBookingPage('Plumber')">
+                                                <div class="quick-service-icon">🚰</div>
+                                                <h4>Plumber</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Right: Recent Activity -->
+                                    <div class="recent-activity-container">
+                                        <div class="section-header">
+                                            <h3>Recent Activity</h3>
+                                            <a href="#" class="view-all-link"
+                                                onclick="document.querySelector('[data-tab=my-bookings]').click()">View
+                                                All</a>
+                                        </div>
+                                        <div class="recent-activity-list" id="recent-activity-list">
+                                            <!-- Initially static, replaced by JS -->
+                                            <div class="activity-item">
+                                                <div class="activity-icon"
+                                                    style="background: rgba(57, 255, 20, 0.1); color: var(--neon-green);">
+                                                    <i class="fas fa-check"></i>
+                                                </div>
+                                                <div class="activity-details">
+                                                    <h5>Plumbing Job Completed</h5>
+                                                    <p>Yesterday, 4:30 PM</p>
+                                                </div>
+                                            </div>
+                                            <div class="activity-item">
+                                                <div class="activity-icon"
+                                                    style="background: rgba(0, 210, 255, 0.1); color: var(--neon-blue);">
+                                                    <i class="fas fa-wallet"></i>
+                                                </div>
+                                                <div class="activity-details">
+                                                    <h5>Wallet Top-up</h5>
+                                                    <p>Nov 10, 2:00 PM</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sticky AI/Community Sidebar -->
+                            <!-- Sticky AI/Community Sidebar (Removed) -->
+                            <div class="overview-sidebar" style="display: none;"></div>
+                        </div>
+                    </section>
+
+                    <!-- Book Service Tab -->
+                    <section id="book-service-tab" class="tab-content section-container" style="display: none;">
+                        <div class="page-header" style="margin-bottom: 2rem;">
+                            <h1>What do you need help with?</h1>
+                            <p class="text-secondary">Select a category to find specialized workers near you.</p>
+                        </div>
+                        <div class="service-categories-grid">
+                            <div class="category-card" onclick="openBookingPage('Mechanic')">
+                                <div class="category-icon">🔧</div>
+                                <h4>Mechanic</h4>
+                                <p class="text-muted" style="font-size: 0.8rem;">Vehicle & engine repairs</p>
+                            </div>
+                            <div class="category-card" onclick="openBookingPage('Plumber')">
+                                <div class="category-icon">🚰</div>
+                                <h4>Plumber</h4>
+                                <p class="text-muted" style="font-size: 0.8rem;">Pipe leaks & installations</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Nearby Workers Tab -->
+                    <section id="nearby-workers-tab" class="tab-content section-container" style="display: none;">
+                        <div class="page-header"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h1>Nearby Professionals</h1>
+                                <p class="text-secondary">Explore verified professionals active in your area.</p>
+                            </div>
+                            <div class="map-controls" style="display: flex; gap: 1rem;">
+                                <select id="worker-category-filter" class="btn btn-secondary"
+                                    style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 0.5rem 1rem; border-radius: 8px;">
+                                    <option value="all">All Services</option>
+                                    <option value="Mechanic">Mechanic</option>
+                                    <option value="Plumber">Plumber</option>
+                                </select>
+                                <button class="btn btn-primary" id="refresh-map"
+                                    style="background: var(--neon-blue); color: #000;"><i class="fas fa-sync-alt"></i>
+                                    Refresh</button>
+                            </div>
+                        </div>
+                        <div class="nearby-workers-layout"
+                            style="display: flex; flex-direction: column; gap: 1.5rem; height: auto;">
+                            <div id="nearby-map" class="nearby-map-container"
+                                style="height: 400px; width: 100%; border-radius: 20px; border: 1px solid var(--glass-border); overflow: hidden; background: #111;">
+                            </div>
+                            <!-- Panel below map, scrollable horizontally -->
+                            <div class="nearby-workers-list-panel"
+                                style="width: 100%; background: transparent; border: none; padding: 0; display: flex; flex-direction: column;">
+                                <h3
+                                    style="margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.5rem; color: #fff; font-size: 1.2rem;">
+                                    <span
+                                        style="width: 10px; height: 10px; background: var(--neon-green); border-radius: 50%; display: inline-block; box-shadow: 0 0 10px var(--neon-green);"></span>
+                                    Available Professionals
+                                </h3>
+                                <div id="nearby-workers-list" class="nearby-workers-list"
+                                    style="width: 100%; overflow-x: auto; display: flex; gap: 1rem; padding-bottom: 1rem;">
+                                    <!-- Dynamic list items will appear here -->
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- My Bookings Tab -->
+                    <section id="my-bookings-tab" class="tab-content section-container" style="display: none;">
+                        <div class="page-header"
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                            <div>
+                                <h1>My Bookings</h1>
+                                <p class="text-secondary">Manage and track all your service requests.</p>
+                            </div>
+                            <!-- Removed duplicate static filters -->
+                        </div>
+                        <div id="bookings-grid" class="bookings-grid-layout">
+                            <!-- Dynamic list of bookings -->
+                        </div>
+                    </section>
+
+                    <!-- Wallet Tab -->
+                    <section id="wallet-tab" class="tab-content section-container" style="display: none;">
+                        <h1>Wallet & Payments</h1>
+                        <div id="wallet-container" class="wallet-container" style="margin-top: 2rem;">
+                            <p class="text-muted">Loading wallet data...</p>
+                        </div>
+                    </section>
+
+
+
+                    <!-- Profile Tab -->
+                    <section id="profile-tab" class="tab-content section-container" style="display: none;">
+                        <h1>Your Profile</h1>
+                        <div id="profile-layout" class="profile-layout" style="margin-top: 2rem;">
+                        </div>
+                    </section>
+
+                    <!-- Support Tab -->
+                    <section id="support-tab" class="tab-content section-container" style="display: none;">
+                        <h1>Help & Support</h1>
+                        <div id="support-grid" class="support-grid" style="margin-top: 2rem;">
+                        </div>
+                    </section>
+
+                    <!-- Settings Tab -->
+                    <section id="settings-tab" class="tab-content section-container" style="display: none;">
+                        <h1>Dashboard Settings</h1>
+                        <div class="settings-grid" style="margin-top: 2rem; display: grid; gap: 1.5rem;">
+                            <div class="settings-card"
+                                style="background: var(--bg-elevated); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--glass-border);">
+                                <h3 style="margin-bottom: 0.5rem; color: #fff;">Real-time Tracking Updates</h3>
+                                <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Choose
+                                    how the map updates worker locations.</p>
+
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                                    <input type="radio" id="tracking-polling" name="tracking-method" value="polling"
+                                        onchange="window.saveTrackingMethod('polling')">
+                                    <label for="tracking-polling" style="cursor: pointer;">
+                                        <strong style="color: #fff;">Polling Method (Default)</strong><br>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);">Updates every 10
+                                            seconds via API calls. Recommended for stability.</span>
+                                    </label>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <input type="radio" id="tracking-firestore" name="tracking-method" value="firestore"
+                                        onchange="window.saveTrackingMethod('firestore')">
+                                    <label for="tracking-firestore" style="cursor: pointer;">
+                                        <strong style="color: var(--neon-blue);">Firestore Real-time (Beta)</strong><br>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted);">Instant updates via
+                                            live database connection. Best performance.</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </main>
+        </div>
+
+        <!-- AI Chat Popup Window -->
+        <div class="chat-popup-window" id="ai-chat-popup">
+            <div class="chat-popup-header">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar" style="width: 35px; height: 35px; background: rgba(255,255,255,0.2);"><i
+                            class="fas fa-robot"></i></div>
+                    <div>
+                        <h4 style="color: #fff; margin: 0; font-size: 1rem;">BlueBridge AI</h4>
+                        <span style="font-size: 0.7rem; color: rgba(255,255,255,0.8); display: block;">Online &
+                            Ready</span>
+                    </div>
+                </div>
+                <div class="chat-controls">
+                    <button class="control-btn" id="minimize-chat-popup" title="Minimize"><i
+                            class="fas fa-minus"></i></button>
+                    <button class="control-btn" id="maximize-chat-popup" title="Maximize"><i
+                            class="fas fa-expand"></i></button>
+                    <button class="close-chat-btn" id="close-chat-popup" title="Close"><i
+                            class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chat-popup-body" id="chat-popup-body">
+                <div class="ai-message">
+                    <p>Hello Dhruv! 👋 I'm your personal assistant. I can help you find workers, check rates, or track
+                        your
+                        bookings. How can I help today?</p>
+                </div>
+            </div>
+            <div class="chat-popup-footer">
+                <!-- File Preview Area -->
+                <div id="chat-file-preview" class="chat-file-preview"></div>
+
+                <div class="chat-input-wrapper">
+                    <!-- Hidden File Input -->
+                    <input type="file" id="chat-file-input" hidden
+                        accept="image/png, image/jpeg, image/webp, application/pdf">
+
+                    <!-- Attach Button -->
+                    <button id="chat-attach-btn" title="Attach Image or PDF"><i class="fas fa-paperclip"></i></button>
+
+                    <input type="text" id="ai-popup-input" placeholder="Ask anything..." autocomplete="off">
+
+                    <!-- Mic Button -->
+                    <button id="chat-mic-btn" title="Speak"><i class="fas fa-microphone"></i></button>
+
+                    <!-- Send Button -->
+                    <button id="ai-popup-send" title="Send"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Floating Widget Toggle -->
+        <div class="ai-widget-container">
+            <button class="ai-toggle-btn" id="ai-widget-toggle">
+                <i class="fas fa-robot"></i>
+            </button>
+        </div>
+
+        <!-- Multi-step Booking Modal (Placeholder for dynamic UI) -->
+        <div class="modal-overlay" id="booking-modal-overlay">
+            <div class="modal-container">
+                <div id="booking-modal-content">
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <!-- Config loaded first -->
+
+
+        <!-- Leaflet JS -->
+
+
+
+
+
+
+        <!-- Dynamic Dashboard Worker Modal -->
+        <div class="profile-modal" id="dashboard-worker-modal">
+            <div class="profile-modal-content">
+                <button class="profile-close" onclick="closeDashboardWorkerModal()"><i
+                        class="fas fa-times"></i></button>
+                <div class="profile-header-banner">
+                    <div class="profile-avatar-large" id="dash-modal-avatar">UP</div>
+                </div>
+                <div class="profile-body">
+                    <div style="margin-bottom: 1.5rem;">
+                        <h2 id="dash-modal-name" style="margin: 0; font-size: 1.8rem; color: #fff;">Walter White</h2>
+                        <p id="dash-modal-category" style="margin: 5px 0; color: var(--neon-blue); font-weight: 500;">
+                            Plumber • 5 Years Exp</p>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 10px; color: #fff;">About Professional</h4>
+                        <p id="dash-modal-bio"
+                            style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); margin: 0;">
+                            Reliable professional with excellent service history.
+                        </p>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <h4 style="margin-bottom: 10px; color: #fff;">Skills</h4>
+                        <div id="dash-modal-skills">
+                            <span class="skill-tag">Expert</span>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary btn-block" style="margin-top: 1rem;"
+                        onclick="closeDashboardWorkerModal(); document.querySelector('[data-tab=book-service]').click()">Find
+                        and Book</button>
+                </div>
+            </div>
+        </div>
+</body>
+
+</html>

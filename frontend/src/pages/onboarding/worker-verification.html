@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worker Verification - BlueBridge</title>
+    
+    
+    
+    
+    
+    
+    <style>
+        .verification-step {
+            margin-top: 2rem;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .step {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #718096;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.2);
+        }
+
+        .step.completed {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+        }
+
+        .compact-upload {
+            padding: 2rem 1rem;
+        }
+
+        .compact-upload .upload-icon {
+            font-size: 2rem;
+        }
+
+        .compact-upload h3 {
+            font-size: 1rem;
+        }
+
+        .compact-upload p {
+            font-size: 0.85rem;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="onboarding-container gradient-mesh">
+        <div class="onboarding-card card-glass" style="max-width: 900px;">
+            <div class="onboarding-header">
+                <div class="logo">
+                    <span class="logo-icon">🔧</span>
+                    <span class="logo-text">BlueBridge</span>
+                </div>
+                <h1>Worker Verification</h1>
+                <p>Complete your profile and verify your identity</p>
+            </div>
+
+            <!-- Step Indicator -->
+            <div class="step-indicator">
+                <div class="step completed" id="step1">1</div>
+                <div class="step active" id="step2">2</div>
+                <div class="step" id="step3">3</div>
+            </div>
+
+            <!-- Step 1: Basic Info (Skipped as requested) -->
+            <div id="stepContent1" class="step-content" style="display: none;">
+                <form class="onboarding-form" id="workerBasicInfoForm">
+                    <!-- Form content hidden but maintained for script compatibility -->
+                </form>
+            </div>
+
+            <!-- Step 2: Identity Document Verification (Skipped) -->
+            <div id="stepContent2" class="step-content" style="display: none;">
+                <div class="verification-step">
+                    <h3 style="text-align: center; margin-bottom: 1rem; color: #2d3748;">
+                        <i class="fas fa-id-card"></i> Verify Your Identity
+                    </h3>
+                    <p style="text-align: center; color: #718096; margin-bottom: 2rem;">
+                        Upload a government-issued ID for verification
+                    </p>
+
+                    <div class="document-type-selector">
+                        <label for="documentType">Select Document Type</label>
+                        <select id="documentType">
+                            <option value="">-- Choose Document Type --</option>
+                            <option value="aadhaar">Aadhaar Card</option>
+                            <option value="pan">PAN Card</option>
+                            <option value="driving_license">Driving License</option>
+                            <option value="voter_id">Voter ID</option>
+                            <option value="passport">Passport</option>
+                        </select>
+                    </div>
+
+                    <div class="upload-area compact-upload" id="uploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Drag & Drop your document here</h3>
+                        <p>or click to browse</p>
+                        <p class="file-types">Supported: JPG, PNG, PDF (max 5MB)</p>
+                        <input type="file" id="fileInput" accept="image/*,.pdf">
+                    </div>
+
+                    <div class="preview-area" id="previewArea">
+                        <div class="preview-image-container">
+                            <img id="previewImage" class="preview-image" alt="Document preview">
+                            <button class="remove-image-btn" id="removeImageBtn">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <button class="verify-btn" id="verifyBtn">
+                            <i class="fas fa-check-circle"></i> Verify Document
+                        </button>
+                    </div>
+
+                    <div class="results-area" id="resultsArea"></div>
+
+                    <button class="btn btn-secondary btn-lg" id="backToStep1" style="margin-top: 1rem;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+            </div>
+
+            <!-- Step 3: Review & Complete -->
+            <div id="stepContent3" class="step-content" style="display: none;">
+                <div style="text-align: center; padding: 2rem;">
+                    <div style="font-size: 4rem; margin-bottom: 1rem;">
+                        <i class="fas fa-check-circle" style="color: #48bb78;"></i>
+                    </div>
+                    <h2 style="color: #2d3748; margin-bottom: 1rem;">Verification Complete!</h2>
+                    <p style="color: #718096; margin-bottom: 2rem;">
+                        Your profile has been created and your documents are verified.
+                    </p>
+
+                    <div id="profileSummary"
+                        style="background: rgba(255,255,255,0.5); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; text-align: left;">
+                        <!-- Profile summary will be inserted here -->
+                    </div>
+
+                    <button class="btn btn-primary btn-lg" id="completeOnboarding">
+                        <i class="fas fa-rocket"></i> Go to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay active" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Redirecting...</h3>
+            <p>Welcome to BlueBridge! Taking you to your dashboard.</p>
+        </div>
+    </div>
+
+    
+    
+    
+    
+</body>
+
+</html>

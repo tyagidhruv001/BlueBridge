@@ -1,0 +1,31 @@
+﻿.dark-popup .leaflet-popup-tip {
+    background: #1a1a1a;
+}
+
+.nearby-worker-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nearby-worker-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 210, 255, 0.1);
+    border-color: var(--neon-blue) !important;
+}
+
+.nearby-workers-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.nearby-workers-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+
+.nearby-workers-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.nearby-workers-list::-webkit-scrollbar-thumb:hover {
+    background: var(--neon-blue);
+}

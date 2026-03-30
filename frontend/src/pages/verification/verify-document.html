@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Verification - BlueBridge</title>
+    
+    
+</head>
+
+<body>
+    <div class="verification-container">
+        <div class="verification-card">
+            <div class="verification-header">
+                <h2>Document Verification</h2>
+                <p>Upload your document for instant AI-powered verification</p>
+            </div>
+
+            <!-- Document Type Selection -->
+            <div class="document-type-selector">
+                <label for="documentType">Select Document Type</label>
+                <select id="documentType">
+                    <option value="">-- Choose Document Type --</option>
+                    <option value="aadhaar">Aadhaar Card</option>
+                    <option value="pan">PAN Card</option>
+                    <option value="driving_license">Driving License</option>
+                    <option value="voter_id">Voter ID</option>
+                    <option value="passport">Passport</option>
+                    <option value="bank_statement">Bank Statement</option>
+                    <option value="utility_bill">Utility Bill</option>
+                    <option value="other">Other Government ID</option>
+                </select>
+            </div>
+
+            <!-- Upload Area -->
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h3>Drag & Drop your document here</h3>
+                <p>or click to browse</p>
+                <p class="file-types">Supported formats: JPG, PNG, PDF (max 5MB)</p>
+                <input type="file" id="fileInput" accept="image/*,.pdf">
+            </div>
+
+            <!-- Preview Area -->
+            <div class="preview-area" id="previewArea">
+                <div class="preview-image-container">
+                    <img id="previewImage" class="preview-image" alt="Document preview">
+                    <button class="remove-image-btn" id="removeImageBtn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <button class="verify-btn" id="verifyBtn">
+                    <i class="fas fa-check-circle"></i> Verify Document
+                </button>
+            </div>
+
+            <!-- Results Area -->
+            <div class="results-area" id="resultsArea">
+                <!-- Results will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Verifying Document...</h3>
+            <p>Our AI is analyzing your document. This may take a few moments.</p>
+        </div>
+    </div>
+
+    
+    
+    
+    
+</body>
+
+</html>

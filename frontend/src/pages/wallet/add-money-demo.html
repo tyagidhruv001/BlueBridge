@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Money - Demo Mode | BlueBridge</title>
+    
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .demo-badge {
+            background: #ff9800;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .wallet-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: #333;
+            margin-bottom: 2rem;
+        }
+
+        .balance-section {
+            text-align: center;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            margin-bottom: 2rem;
+            color: #fff;
+        }
+
+        .balance-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .balance-amount {
+            font-size: 3rem;
+            font-weight: 700;
+        }
+
+        .amount-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 2rem 0 1.5rem;
+        }
+
+        .amount-btn {
+            padding: 1.5rem;
+            border: 2px solid #667eea;
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #667eea;
+            transition: all 0.3s;
+        }
+
+        .amount-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .amount-btn.selected {
+            background: #667eea;
+            color: white;
+        }
+
+        .custom-amount input {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            outline: none;
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 1.2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1.5rem;
+        }
+
+        .pay-btn:disabled {
+            opacity: 0.5;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .info-box {
+            background: #fff3cd;
+            border-left: 4px solid #ff9800;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="demo-badge">
+            🚀 DEMO MODE - No real payment needed
+        </div>
+
+        <div class="header">
+            <h1>💰 Add Money to Wallet</h1>
+            <p>Test wallet functionality (Demo Mode)</p>
+        </div>
+
+        <div class="wallet-card">
+            <div class="balance-section">
+                <div class="balance-label">Current Balance</div>
+                <div class="balance-amount" id="balance">₹0</div>
+            </div>
+
+            <h3>Select Amount</h3>
+            <div class="amount-grid">
+                <button class="amount-btn" onclick="selectAmount(100)">₹100</button>
+                <button class="amount-btn" onclick="selectAmount(500)">₹500</button>
+                <button class="amount-btn" onclick="selectAmount(1000)">₹1000</button>
+                <button class="amount-btn" onclick="selectAmount(2000)">₹2000</button>
+                <button class="amount-btn" onclick="selectAmount(5000)">₹5000</button>
+                <button class="amount-btn" onclick="selectAmount(10000)">₹10000</button>
+            </div>
+
+            <div class="custom-amount">
+                <input type="number" id="custom-amount" placeholder="Or enter custom amount" min="10">
+            </div>
+
+            <button class="pay-btn" id="pay-btn" onclick="simulatePayment()" disabled>
+                Add Money (Demo)
+            </button>
+
+            <div class="alert success" id="alert"></div>
+
+            <div class="info-box">
+                <strong>📝 Demo Mode Active</strong><br>
+                This is a demonstration. Money is added instantly without real payment.<br><br>
+                <strong>To enable real payments:</strong><br>
+                1. Get Razorpay API keys from https://razorpay.com<br>
+                2. Add keys to backend/.env<br>
+                3. Use add-money.html instead
+            </div>
+        </div>
+    </div>
+
+    
+</body>
+
+</html>
+

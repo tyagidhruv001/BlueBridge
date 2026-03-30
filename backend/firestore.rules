@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow users to read/write their own basic profile
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Workers collection rules
+    match /workers/{workerId} {
+      // Anyone can read worker basic info
+      allow read: if request.auth != null;
+      
+      // Only the worker can update their location and last_seen
+      allow update: if request.auth != null && request.auth.uid == workerId 
+                   && request.resource.data.diff(resource.data).affectedKeys()
+                      .hasOnly(['location', 'last_seen', 'is_online']);
+
+      // Subcollection for location history
+      match /locationHistory/{historyId} {
+        // Only the worker can add to their history
+        allow create: if request.auth != null && request.auth.uid == workerId;
+        // Only the worker can read their own history (customers don't need historical data)
+        allow read: if request.auth != null && request.auth.uid == workerId;
+      }
+    }
+
+    // Chat rules
+    match /chats/{bookingId} {
+      allow read, write: if request.auth != null && request.auth.uid in resource.data.participants;
+      
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null && request.auth.uid in get(/databases/$(database)/documents/chats/$(bookingId)).data.participants;
+      }
+    }
+  }
+}

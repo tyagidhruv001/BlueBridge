@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Professional | BlueBridge</title>
+    <!-- Custom Styles & Scripts -->
+    
+    
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--bg-dark-900);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .chat-header {
+            background: rgba(30, 32, 58, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .worker-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: var(--neon-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: #fff;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .worker-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .chat-container {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            background: radial-gradient(circle at center, #1a1b2e 0%, #0f0f0f 100%);
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
+            position: relative;
+            line-height: 1.5;
+            font-size: 0.95rem;
+            animation: fadeIn 0.3s;
+        }
+
+        .msg-received {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom-left-radius: 2px;
+            color: #e0e0e0;
+        }
+
+        .msg-sent {
+            align-self: flex-end;
+            background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+            color: #fff;
+            border-bottom-right-radius: 2px;
+            box-shadow: 0 4px 15px rgba(0, 210, 255, 0.2);
+        }
+
+        .msg-time {
+            font-size: 0.7rem;
+            margin-top: 0.4rem;
+            opacity: 0.7;
+            text-align: right;
+            display: block;
+        }
+
+        .chat-footer {
+            padding: 1rem 1.5rem;
+            background: var(--bg-dark-800);
+            border-top: 1px solid var(--glass-border);
+            display: flex;
+            gap: 0.8rem;
+            align-items: center;
+            position: relative;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 30px;
+            padding: 0.8rem 1.5rem;
+            color: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .chat-input:focus {
+            border-color: var(--neon-blue);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .send-btn {
+            background: var(--neon-green);
+            color: #000;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-header">
+        <button onclick="history.back()"
+            style="background:none; border:none; color:white; font-size:1.2rem; cursor:pointer;"><i
+                class="fas fa-arrow-left"></i></button>
+        <div class="worker-avatar" id="chat-avatar">RK</div>
+        <div>
+            <h3 style="margin:0; font-size:1.1rem;" id="chat-worker-name">Chat</h3>
+            <p style="margin:0; font-size:0.8rem; color:var(--neon-green);">Online</p>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:1rem;">
+            <button style="background:none; border:none; color:white; font-size:1.1rem; cursor:pointer;"
+                onclick="alert('Calling...')"><i class="fas fa-phone-alt"></i></button>
+        </div>
+    </div>
+
+    <div class="chat-container" id="chat-history">
+        <div style="text-align:center; color:white; opacity:0.5; margin-top:20px;">Loading chat history...</div>
+    </div>
+
+    <div class="chat-footer">
+        <button class="action-btn" onclick="alert('Attachments coming soon!')">
+            <i class="fas fa-paperclip"></i>
+        </button>
+
+        <input type="text" class="chat-input" id="message-input" placeholder="Type a message...">
+        <button class="send-btn" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+
+    
+    
+    
+    
+</body>
+
+</html>
