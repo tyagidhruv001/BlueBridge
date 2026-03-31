@@ -1,4 +1,4 @@
-﻿🛠️ BlueBridge – A Modern Home Services Platform
+🛠️ BlueBridge – A Modern Home Services Platform
 
 BlueBridge is a scalable, technology-driven platform designed to seamlessly connect customers with verified skilled professionals for on-demand home services. The platform emphasizes trust, efficiency, and user-centric design, delivering a reliable and transparent service experience.
 
@@ -49,12 +49,60 @@ Built using HTML, CSS, JavaScript, and Vite to deliver a fast and responsive use
 • Backend
 Developed using Node.js and Express, with Firebase integration for authentication, database, and real-time features.
 
-⚙️ Getting Started
+## 📂 Folder Structure
+
+```text
+BlueBridge/
+├── backend/                  # Node.js + Express backend application
+│   ├── config/               # Configuration files
+│   ├── src/                  # Backend source code (routes, controllers, etc.)
+│   ├── clear-db.js           # Database cleanup utility
+│   └── package.json          # Backend dependencies and scripts
+│
+├── frontend/                 # React + Vite frontend application
+│   ├── public/               # Static assets
+│   ├── src/                  # React source code (components, pages, assets)
+│   ├── index.html            # Main HTML entry point
+│   ├── vite.config.js        # Vite bundler configuration
+│   └── package.json          # Frontend dependencies and scripts
+│
+├── .gitignore                # Git ignore rules
+└── README.md                 # Project documentation
+```
+
+## ⚙️ Getting Started
 
 Prerequisites include Node.js (v20 or higher), a configured Firebase project, and API keys such as Razorpay and Google Generative AI.
 
-To run the frontend, install dependencies and start the development server.
-To run the backend, install dependencies and start the server.
+### 1. Backend Setup
+
+Open a terminal and configure the backend:
+
+```bash
+cd backend
+npm install
+```
+
+Start the backend server (runs on port defined in your environment):
+```bash
+npm run dev    # Starts with nodemon for development
+# or
+npm start      # Standard start
+```
+
+### 2. Frontend Setup
+
+Open a separate terminal and configure the frontend:
+
+```bash
+cd frontend
+npm install
+```
+
+Start the frontend development server:
+```bash
+npm run dev
+```
 
 🧪 Testing & Demo Modes
 
