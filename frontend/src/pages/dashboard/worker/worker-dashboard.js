@@ -7,7 +7,12 @@ import { API, apiFetch } from '../../../api/api.js';
 import { Storage, getRelativeTime, showToast, showLoading, hideLoading, showConfirm } from '../../../utils/utils.js';
 import { auth, db, collection, query, where, onSnapshot, orderBy, doc, getDoc } from '../../../utils/config.js';
 
+// --- GLASS COCKPIT GLOBAL STATE ---
+let globalWorkerWatchId = null;
+window.activeBookingIds = [];
+
 // ============================================
+
 // GLOBAL JOB ACTIONS (Defined early to ensure availability)
 // ============================================
 window.acceptJob = async function (jobId) {
@@ -346,12 +351,16 @@ async function initDashboard() {
     await refreshDashboardData();
     loadDemoDataIfEmpty();
     loadPage('home');
+
+    // --- GLASS COCKPIT: START SYNC ENGINE ---
+    await initGlobalBookingSync();
   } catch (err) {
     console.error('Initial data load failed:', err);
     loadDemoDataIfEmpty();
     loadPage('home');
   }
 } // End initDashboard
+
 
 // ============================================
 // DATA MANAGEMENT
@@ -2088,7 +2097,10 @@ window.renderActiveJobsList = function (activeJobs, container) {
               </div>
             </div>
 
+            <div id="mission-radar-${job.id}" style="margin-bottom: 1.5rem;"></div>
+
             <div class="job-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+
               <button class="btn btn-success" style="grid-column: span 2; padding: 1rem; font-weight: 700;" onclick="completeJob('${job.id}')">
                 <i class="fas fa-check-double" style="margin-right: 8px;"></i> Mark as Complete
               </button>
@@ -2247,8 +2259,136 @@ window.fetchAndRenderJobRequests = fetchAndRenderJobRequests;
 window.fetchAndRenderActiveJobs = fetchAndRenderActiveJobs;
 window.fetchAndRenderJobHistory = fetchAndRenderJobHistory;
 
+// --- GLASS COCKPIT: LIVE TRACKING & MISSION RADAR ---
+async function startGlobalLocationWatch() {
+    if (!navigator.geolocation) {
+        console.warn('Geolocation not supported');
+        return;
+    }
+
+    if (globalWorkerWatchId) navigator.geolocation.clearWatch(globalWorkerWatchId);
+
+    console.log('🛰️ [WORKER] Starting Global Live Tracking Watch...');
+    
+    globalWorkerWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+            console.log(`📍 [WORKER] GPS Update: ${latitude}, ${longitude}`);
+            
+            // AUTO-SYNC: Push worker location to any active jobs so customers can track them
+            if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
+                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+                
+                window.activeBookingIds.forEach(bookingId => {
+                    console.log(`🛰️ [WORKER] Broadcasting Signal for Job: ${bookingId}`);
+                    // Direct API sync (redundant to Firestore for dual-availability)
+                    fetch(`${apiBase}/location/${bookingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: Storage.get('BlueBridge_user')?.uid || 'anonymous',
+                            userType: 'worker',
+                            latitude,
+                            longitude,
+                            accuracy,
+                            timestamp: new Date().toISOString()
+                        })
+                    }).catch(e => console.warn('Silent sync failed for job:', bookingId));
+                });
+            }
+        },
+        (error) => console.warn('❌ [WORKER] Watch Error:', error.message),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+}
+
+async function initGlobalBookingSync() {
+    console.log('📡 [WORKER SYNC] Initializing Global Job Signal...');
+    const user = Storage.get('BlueBridge_user');
+    if (!user) return;
+
+    try {
+        const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+        
+        // Initial fetch to get active jobs
+        const res = await fetch(`${apiBase}/jobs/active?workerId=${user.uid}`);
+        const jobs = await res.json();
+        
+        const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
+        window.activeBookingIds = (jobs || [])
+            .filter(j => activeStatuses.includes((j.status || '').toLowerCase()))
+            .map(j => j.id);
+
+        console.log(`📡 [WORKER SYNC] Found ${window.activeBookingIds.length} active jobs to broadcast.`);
+
+        if (window.activeBookingIds.length > 0) {
+            startGlobalLocationWatch();
+            // Trigger radar for active jobs
+            setTimeout(() => {
+                window.activeBookingIds.forEach(id => initActiveMissionMap(id));
+            }, 1000);
+        }
+    } catch (err) {
+        console.warn('📡 [WORKER SYNC] Initial fetch failed:', err);
+    }
+}
+
+async function initActiveMissionMap(bookingId) {
+    const container = document.getElementById(`mission-radar-${bookingId}`);
+    if (!container) return;
+
+    console.log(`🚀 [MISSION RADAR] Deploying Signal for: ${bookingId}`);
+    
+    container.innerHTML = `
+        <div class="mission-radar-wrapper" style="position:relative; width:100%; height:180px; background:rgba(0,0,0,0.4); border-radius:15px; overflow:hidden; border:1px solid rgba(0,255,255,0.1);">
+            <div class="radar-pulse"></div>
+            <div class="radar-sweep"></div>
+            <div id="map-${bookingId}" style="width:100%; height:100%; opacity:0.6; pointer-events:none;"></div>
+            <div style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:20px; font-size:10px; color:#00f2ff; border:1px solid #00f2ff;">
+                LIVE TELEMETRY
+            </div>
+            <div id="customer-status-${bookingId}" style="position:absolute; top:10px; left:10px; font-size:11px; color:#fff; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:4px;">
+                Waiting for signal...
+            </div>
+        </div>
+    `;
+
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet not loaded yet, retrying radar map...');
+        setTimeout(() => initActiveMissionMap(bookingId), 1000);
+        return;
+    }
+
+    const map = L.map(`map-${bookingId}`, { zoomControl: false, attributionControl: false }).setView([28.4089, 77.3178], 15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    let customerMarker = L.circleMarker([28.4089, 77.3178], {
+        radius: 8,
+        color: '#00f2ff',
+        fillColor: '#00f2ff',
+        fillOpacity: 0.8,
+        className: 'gps-pulse-customer'
+    }).addTo(map);
+
+    onSnapshot(doc(db, 'locations', bookingId), (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const customerLoc = data.customer;
+            if (customerLoc && customerLoc.latitude) {
+                const newPos = [customerLoc.latitude, customerLoc.longitude];
+                customerMarker.setLatLng(newPos);
+                map.panTo(newPos);
+                document.getElementById(`customer-status-${bookingId}`).innerHTML = 
+                    `<span style="color:#00f2ff;">●</span> CUSTOMER SIGNAL DETECTED`;
+            }
+        }
+    });
+}
+
+
 // Wait for the #contentArea to be present in DOM (injected by React) then boot
 function waitForDOMAndInit() {
+
   if (document.getElementById('contentArea')) {
     console.log('[WORKER DASHBOARD] DOM ready, starting initDashboard...');
     initDashboard();

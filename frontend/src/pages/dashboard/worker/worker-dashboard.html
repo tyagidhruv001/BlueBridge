@@ -1,4 +1,4 @@
-﻿<!-- Sidebar -->
+<!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="logo">
@@ -102,8 +102,11 @@
                 style="display: none; align-items: center; gap: 0.5rem; margin-left: 1rem; padding: 0.5rem 1rem; background: rgba(57, 255, 20, 0.1); border: 1px solid rgba(57, 255, 20, 0.3); border-radius: 20px;">
                 <span
                     style="width: 8px; height: 8px; background: var(--neon-green); border-radius: 50%; animation: pulse 2s infinite;"></span>
-                <span style="color: var(--neon-green); font-size: 0.85rem; font-weight: 600;">Live Tracking</span>
+                <span style="color: var(--neon-green); font-size: 0.85rem; font-weight: 600;">Live</span>
             </div>
+            <button class="btn btn-sm btn-primary" id="startGPSBtn" onclick="window.startGPS()" style="margin-left: 0.5rem; background: var(--neon-blue); color: #000; border: none; font-weight: 700; display: none;">
+                <i class="fas fa-location-crosshairs"></i> START GPS
+            </button>
             <button class="btn btn-sm btn-secondary" id="toggleAvailability">Go Offline</button>
         </div>
 

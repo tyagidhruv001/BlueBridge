@@ -174,6 +174,13 @@ export const API = {
                 method: 'PUT',
                 body: JSON.stringify(data)
             });
+        },
+        // Dedicated endpoint for pushing GPS location for map display
+        async updateLocation(uid, lat, lng) {
+            return apiFetch(`/workers/${uid}/location`, {
+                method: 'PATCH',
+                body: JSON.stringify({ lat, lng, timestamp: new Date().toISOString() })
+            });
         }
     },
     auth: {

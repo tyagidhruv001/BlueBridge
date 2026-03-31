@@ -1,4 +1,4 @@
-﻿import { API } from '../../api/api.js';
+import { API } from '../../api/api.js';
 import { Storage } from '../../utils/utils.js';
 
 let currentStep = 1;
@@ -209,10 +209,25 @@ function prepareFinalSummary() {
 async function submitBooking() {
     const user = Storage.get('BlueBridge_user');
     const submitBtn = document.getElementById('next-btn');
-    submitBtn.textContent = 'Processing...';
+    submitBtn.textContent = 'Getting Location & Processing...';
     submitBtn.disabled = true;
 
     try {
+        // Fetch actual GPS location
+        const getGPSLocation = () => new Promise((resolve) => {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+                    (error) => resolve(null),
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                resolve(null);
+            }
+        });
+        
+        const userGPS = await getGPSLocation();
+        
         const payload = {
             customerId: user.uid || user.user_id,
             customerName: user.name || 'User',
@@ -224,7 +239,8 @@ async function submitBooking() {
             time: bookingData.time,
             price: bookingData.totalPrice,
             paymentMethod: bookingData.paymentMethod,
-            scheduledTime: `${bookingData.date}T${bookingData.time}:00.000Z`
+            scheduledTime: `${bookingData.date}T${bookingData.time}:00.000Z`,
+            location: userGPS // Attached pure GPS coordinates
         };
 
         const result = await API.jobs.create(payload);
