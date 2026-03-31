@@ -11,7 +11,7 @@ export const API_BASE = isLocal
 
 export async function apiFetch(path, options = {}) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60-second timeout for heavy AI tasks
     
     try {
         const res = await fetch(API_BASE + path, {
