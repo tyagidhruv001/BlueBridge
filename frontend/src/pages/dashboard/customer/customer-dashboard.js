@@ -1,4 +1,4 @@
-﻿/**
+/**
  * BlueBridge - CUSTOMER DASHBOARD JAVASCRIPT
  * Comprehensive dashboard logic with persistence and AI integration.
  */
@@ -14,6 +14,10 @@ const STORAGE_KEYS = {
     BOOKINGS: 'BlueBridge_bookings',
     WALLET: 'BlueBridge_wallet'
 };
+
+// SAFETY FAIL-SAFE: Prevent ReferenceError if legacy variables are accessed
+const dashboardData = window.dashboardData || { bookings: { active: [], assigned: [] } };
+console.log('🛰️ [MISSION CONTROL] Loaded Refreshed Dashboard Engine v5.1');
 
 // --- DOM Elements ---
 const getEl = (id) => document.getElementById(id);
@@ -107,18 +111,80 @@ function subscribeToBookings(uid) {
 
         // Update UI
         updateDashboardStats();
-        // Only re-render grid if we are on the bookings tab or overview
-        // For simplicity, we just re-render grid if it exists
+        // Always re-render overview so active bookings show up immediately
+        const overviewContainer = document.getElementById('overview-active-booking-container');
+        if (overviewContainer) renderOverview();
+        // Also update bookings grid if visible
         const grid = document.getElementById('bookings-grid');
         if (grid) renderBookingsGrid();
 
-        // Also update overview header stats
-        const overviewContainer = document.getElementById('overview-container');
-        if (overviewContainer) renderOverview(); // This might be too heavy? Maybe just stats.
+        // Manage background GPS pinging
+        manageBackgroundGPSTracking(bookings);
 
     }, (error) => {
         console.error('Error listening to bookings:', error);
     });
+}
+
+function manageBackgroundGPSTracking(bookings) {
+    if (!navigator.geolocation) return;
+
+    // Filter to strictly physical "in-progress" type live jobs where tracking matters
+    const liveJobs = (bookings || []).filter(b => ['assigned', 'accepted', 'in_progress', 'running', 'on the way', 'active'].includes((b.status || '').toLowerCase()));
+
+    // If tracking is already running, skip
+    if (window.customerGPSWatchId) return;
+
+    console.log('🟢 Background GPS presence tracking started.');
+    const userData = Storage.get(STORAGE_KEYS.USER);
+    const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+
+    window.customerGPSWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const { latitude, longitude } = pos.coords;
+            
+            // 1. Update customer's own profile location so they are "visible" in the system
+            if (userData?.uid && API?.auth?.updateProfile) {
+                API.auth.updateProfile(userData.uid, { 
+                    location: { lat: latitude, lng: longitude, lastUpdated: new Date().toISOString() } 
+                }).catch(() => {});
+            }
+
+            // 2. Job-specific pings
+            liveJobs.forEach(job => {
+                // Feature A: Push location to tracking API for 'Track.jsx' component compatibility
+                fetch(`${apiBase}/location/${job.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: userData?.uid || 'anonymous',
+                        userType: 'customer',
+                        latitude,
+                        longitude,
+                        timestamp: new Date().toISOString()
+                    })
+                }).catch(() => {});
+
+                // Feature B: Push literal coordinates directly to the booking document so static maps can see it
+                if (API?.bookings?.update) {
+                    API.bookings.update(job.id, { 
+                        'location.lat': latitude, 
+                        'location.lng': longitude,
+                        'customerLocation.lat': latitude,
+                        'customerLocation.lng': longitude
+                    }).catch(() => {});
+                }
+            });
+        },
+        (err) => {
+            console.warn('Background tracking GPS watch error', err);
+            if (err.code === err.PERMISSION_DENIED) {
+                if (window.customerGPSWatchId) navigator.geolocation.clearWatch(window.customerGPSWatchId);
+                window.customerGPSWatchId = null;
+            }
+        },
+        { enableHighAccuracy: true, maximumAge: 0 }
+    );
 }
 
 function setupDashboardActions() {
@@ -593,8 +659,8 @@ async function updateDashboardStats() {
 
         // Update booking counts
         const bookings = Storage.get(STORAGE_KEYS.BOOKINGS) || [];
-        const activeCount = bookings.filter(b => ['Active', 'On the way', 'Running', 'Pending'].includes(b.status)).length;
-        const completedCount = bookings.filter(b => b.status === 'Completed').length;
+        const activeCount = bookings.filter(b => ['active', 'on the way', 'running', 'pending', 'assigned', 'scheduled', 'confirmed', 'accepted'].includes((b.status || '').toLowerCase())).length;
+        const completedCount = bookings.filter(b => (b.status || '').toLowerCase() === 'completed').length;
 
         if (getEl('stat-active-count')) getEl('stat-active-count').textContent = activeCount;
         if (getEl('stat-completed-count')) getEl('stat-completed-count').textContent = completedCount;
@@ -901,8 +967,10 @@ function renderOverview() {
 
     let bookings = Storage.get(STORAGE_KEYS.BOOKINGS) || [];
 
-    // Broadened filter to ensure 'On the way' and other active states show up
-    const activeBookings = bookings.filter(b => ['Active', 'Confirmed', 'Scheduled', 'On the way', 'Running', 'Pending'].includes(b.status));
+    const activeBookings = bookings.filter(b => {
+        const s = (b.status || '').toLowerCase();
+        return ['active', 'confirmed', 'scheduled', 'on the way', 'running', 'pending', 'accepted', 'assigned'].includes(s);
+    });
     const calendar = generateOverviewCalendar(bookings);
 
     try {
@@ -1037,11 +1105,20 @@ async function renderBookingsGrid(filterType = 'all') {
         let filtered = bookings;
         if (filterType === 'active') {
             // treat 'Pending' as active for now
-            filtered = bookings.filter(b => ['Active', 'Running', 'On the way', 'Pending'].includes(b.status));
+            filtered = bookings.filter(b => {
+                const s = (b.status || '').toLowerCase();
+                return ['active', 'running', 'on the way', 'pending', 'assigned'].includes(s);
+            });
         } else if (filterType === 'completed') {
-            filtered = bookings.filter(b => ['Completed', 'Cancelled'].includes(b.status));
+            filtered = bookings.filter(b => {
+                const s = (b.status || '').toLowerCase();
+                return ['completed', 'cancelled'].includes(s);
+            });
         } else if (filterType === 'scheduled') {
-            filtered = bookings.filter(b => ['Confirmed', 'Scheduled'].includes(b.status));
+            filtered = bookings.filter(b => {
+                const s = (b.status || '').toLowerCase();
+                return ['confirmed', 'scheduled', 'accepted'].includes(s);
+            });
         }
 
         // ... (Rest of the rendering logic remains mostly the same, just need to ensure variables match)
@@ -1082,6 +1159,13 @@ async function renderBookingsGrid(filterType = 'all') {
                    style="white-space:nowrap; background:none; border:none; color:${filterType === 'scheduled' ? '#fff' : 'rgba(255,255,255,0.5)'}; font-weight: 900; font-size: 1.1rem; padding-bottom: 1rem; border-bottom: 3px solid ${filterType === 'scheduled' ? 'var(--neon-blue)' : 'transparent'}; cursor:pointer; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease;">SCHEDULED</button>
            </div>
        `;
+
+        // Populate active booking IDs for live tracking sync (More inclusive status filter)
+        const activeStatuses = ['active', 'assigned', 'in_progress', 'scheduled', 'accepted', 'running', 'on the way'];
+        window.activeBookingIds = (bookings || [])
+            .filter(b => activeStatuses.includes((b.status || '').toLowerCase()))
+            .map(b => b.id);
+        console.log('Broadcasting active booking IDs for tracking:', window.activeBookingIds);
 
         const cardsHtml = filtered.length > 0 ? filtered.map(b => {
             const style = getServiceStyle(b.service || b.serviceType || 'tools');
@@ -1174,8 +1258,8 @@ window.filterBookings = function (type) {
 };
 
 window.openTracking = function (id) {
-    // Open the new live tracking page
-    window.location.href = `../tracking/live-customer.html?bookingId=${id}`;
+    // Open the new high-performance React live tracking page
+    window.location.href = `/tracking/track?bookingId=${id}&role=customer`;
 };
 
 async function renderWallet() {
@@ -1711,7 +1795,8 @@ window.cancelBooking = cancelBooking;
 
 function openTracking(bookingId) {
     if (!bookingId) return;
-    window.location.href = `/pages/tracking/track.html?bookingId=${bookingId}`;
+    // Updated to point to the correct React route
+    window.location.href = `/tracking/track?bookingId=${bookingId}&role=customer`;
 }
 window.openTracking = openTracking;
 
@@ -1826,36 +1911,164 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Store active booking IDs to sync location for workers
+window.activeBookingIds = [];
+
 // --- Nearby Workers Map Feature ---
 let nearbyMap = null;
 let mapMarkers = [];
 let customerMarker = null;
+let workerUnsubscribe = null;
 let customerLocation = { lat: 19.0760, lng: 72.8777 }; // Default: Mumbai
+let globalWatchId = null;
 
-// Get customer's current location
-function getCustomerLocation() {
-    return new Promise((resolve) => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    customerLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    console.log('Customer location obtained:', customerLocation);
-                    resolve(customerLocation);
-                },
-                (error) => {
-                    console.warn('Geolocation error:', error.message, '- Using default location');
-                    resolve(customerLocation);
-                },
-                { timeout: 15000, enableHighAccuracy: true, maximumAge: 0 }
-            );
-        } else {
-            console.warn('Geolocation not supported - Using default location');
-            resolve(customerLocation);
+/**
+ * NEW: Continuous High-Accuracy Geolocation Watch
+ * This replaces simpler getCurrentPosition calls to provide "Live" tracking.
+ */
+function startGlobalLocationWatch() {
+    if (!navigator.geolocation) {
+        console.warn('Geolocation not supported');
+        return;
+    }
+
+    if (globalWatchId) navigator.geolocation.clearWatch(globalWatchId);
+
+    console.log('🛰️ Starting Global Live Tracking Watch...');
+    
+    globalWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+            console.log(`📍 GPS Update: ${latitude}, ${longitude} (Accuracy: ${accuracy}m)`);
+            
+            customerLocation = { lat: latitude, lng: longitude };
+            
+            // Update UI components if they exist
+            if (customerMarker) {
+                customerMarker.setLatLng([latitude, longitude]);
+                // Update status in popup if open
+                if (customerMarker.isPopupOpen()) {
+                    customerMarker.setPopupContent(`
+                        <div style="background: #1a1a1a; color: #fff; padding: 12px; border-radius: 8px; font-family: 'Inter', sans-serif;">
+                            <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: var(--neon-green);"><i class="fas fa-satellite"></i> Live GPS Active</h4>
+                            <p style="margin: 0; font-size: 0.75rem; color: #aaa;">Accuracy: ${Math.round(accuracy)}m</p>
+                        </div>
+                    `);
+                }
+            }
+
+            // Sync to backend if needed (e.g. for active bookings)
+            Storage.set('last_known_gps', customerLocation);
+
+            // AUTO-SYNC: Push customer location to any active bookings so workers can track them
+            if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
+                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+                
+                window.activeBookingIds.forEach(bookingId => {
+                    console.log(`🛰️ Broadcasting Customer Signal for Booking: ${bookingId}`);
+                    fetch(`${apiBase}/location/${bookingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: Storage.get('BlueBridge_user')?.uid || 'anonymous',
+                            userType: 'customer',
+                            latitude,
+                            longitude,
+                            accuracy: accuracy,
+                            timestamp: new Date().toISOString()
+                        })
+                    }).catch(e => console.warn('Silent sync failed for booking:', bookingId));
+                });
+            }
+        },
+        async (error) => {
+            console.warn('❌ Watch Error:', error.message);
+            if (error.code === error.PERMISSION_DENIED) {
+                // Fallback to IP as before
+                await getCustomerLocationIPFallback();
+            }
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+}
+
+/**
+ * NEW: Global Booking Signal Sync
+ * Ensures the customer's location is pushed to Firestore for all active bookings
+ * so workers can track them in real-time.
+ */
+async function initGlobalBookingSync() {
+    console.log('📡 [SYNC] Initializing Global Booking Signal...');
+    const user = Storage.get('BlueBridge_user');
+    if (!user) return;
+
+    try {
+        const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+        
+        // Initial fetch to get active bookings
+        const res = await fetch(`${apiBase}/bookings?userId=${user.uid}`);
+        const bookings = await res.json();
+        
+        const activeStatuses = ['active', 'assigned', 'in_progress', 'scheduled', 'accepted', 'running', 'on the way'];
+        window.activeBookingIds = (bookings || [])
+            .filter(b => activeStatuses.includes((b.status || '').toLowerCase()))
+            .map(b => b.id);
+
+        console.log(`📡 [SYNC] Found ${window.activeBookingIds.length} active missions to broadcast.`);
+
+        if (window.activeBookingIds.length > 0) {
+            startGlobalLocationWatch();
         }
-    });
+    } catch (err) {
+        console.warn('📡 [SYNC] Initial fetch failed:', err);
+    }
+}
+
+/**
+ * Use OpenStreetMap (Nominatim) for free, reliable reverse geocoding
+ */
+async function getAddressFromCoords(lat, lng) {
+    try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'BlueBridge-App' } });
+        const data = await res.json();
+        return data.display_name || 'Location Found';
+    } catch (e) {
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+    }
+}
+
+/**
+ * Fallback: Get city-level location via IP if GPS is denied or unavailable
+ */
+async function getCustomerLocationIPFallback() {
+    try {
+        console.log('🌐 Fetching network-based location (IP Fallback)...');
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        
+        if (data && data.latitude && data.longitude) {
+            customerLocation = { lat: data.latitude, lng: data.longitude };
+            console.log(`✅ Network location found: ${data.city}, ${data.region}`, customerLocation);
+            
+            showToast(`Using network location: ${data.city}`, 'info');
+            
+            if (nearbyMap) {
+                nearbyMap.setView([customerLocation.lat, customerLocation.lng], 13);
+                if (customerMarker) customerMarker.setLatLng([customerLocation.lat, customerLocation.lng]);
+            }
+            return customerLocation;
+        }
+    } catch (e) {
+        console.error('❌ IP Fallback failed:', e);
+    }
+    return customerLocation;
+}
+
+// Get customer's current location (Legacy wrapper for backward compatibility)
+async function getCustomerLocation(force = false) {
+    if (!globalWatchId) startGlobalLocationWatch();
+    return Promise.resolve(customerLocation);
 }
 
 async function renderNearbyWorkers(category = 'all') {
@@ -1900,6 +2113,14 @@ async function renderNearbyWorkers(category = 'all') {
             return;
         }
 
+        // NEW: Fetch all bookings from storage to identify assigned professionals (using Storage v5.1)
+        const allBookings = Storage.get('BlueBridge_bookings') || [];
+        const activeBookings = (allBookings || []).filter(b => 
+            ['Assigned', 'Active', 'In_progress', 'Running', 'Accepted'].includes(b.status)
+        );
+
+        console.log(`📡 [MISSION RADAR] Tracking ${activeBookings.length} active assignments in UI`);
+
         listContainer.innerHTML = workers.map(w => {
             const name = w.name || 'Unknown Worker';
             const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
@@ -1907,14 +2128,19 @@ async function renderNearbyWorkers(category = 'all') {
             const rating = w.rating_avg || 4.5;
             const totalJobs = w.stats?.total_jobs || w.total_jobs || 0;
             const price = w.base_price || 350;
-            const isTrackable = !!w.location;
+            
+            // NEW: Detect if this worker is the assigned one for an active booking
+            const isAssigned = activeBookings.some(b => b.workerId === w.uid);
+            
+            const isTrackable = !!w.location || isAssigned;
             const distance = w.distance ? `${w.distance.toFixed(1)} km away` : '';
             const isOnline = w.is_online !== false;
 
             return `
-                <div class="nearby-worker-card ${!isOnline ? 'offline' : ''}" onclick="window.focusOnWorker('${w.uid}')" style="min-width: 300px; max-width: 320px; flex-shrink: 0; background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 1rem; cursor: pointer; transition: transform 0.2s; display: flex; gap: 1rem; align-items: flex-start;">
+                <div class="nearby-worker-card ${!isOnline ? 'offline' : ''} ${isAssigned ? 'assigned-mission' : ''}" onclick="window.focusOnWorker('${w.uid}')" style="min-width: 300px; max-width: 320px; flex-shrink: 0; background: ${isAssigned ? 'rgba(0, 210, 255, 0.08)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isAssigned ? 'var(--neon-blue)' : 'var(--glass-border)'}; border-radius: 12px; padding: 1rem; cursor: pointer; transition: transform 0.2s; display: flex; gap: 1rem; align-items: flex-start; position: relative;">
+                    ${isAssigned ? '<div style="position: absolute; top: -10px; right: 10px; background: var(--neon-blue); color: #000; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; box-shadow: 0 0 10px var(--neon-blue);">ASSIGNED PROFESSIONAL</div>' : ''}
                     <div class="card-avatar-wrapper" style="position: relative;">
-                        <div class="card-avatar" style="width: 50px; height: 50px; background: var(--neon-blue); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #000;">${initials}</div>
+                        <div class="card-avatar" style="width: 50px; height: 50px; background: ${isAssigned ? 'var(--neon-blue)' : 'var(--bg-tertiary)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: ${isAssigned ? '#000' : '#fff'};">${initials}</div>
                         ${isOnline ? '<div class="online-indicator" style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: var(--neon-green); border-radius: 50%; border: 2px solid #1a1a1a;"></div>' : ''}
                     </div>
                     <div class="card-info" style="flex: 1;">
@@ -1926,20 +2152,19 @@ async function renderNearbyWorkers(category = 'all') {
                             <span><i class="fas fa-briefcase"></i> ${skill}</span>
                             <span style="margin: 0 4px;">•</span>
                             <span><i class="fas fa-star" style="color: var(--neon-orange);"></i> ${rating.toFixed(1)}</span>
-                            <span>(${totalJobs}+ jobs)</span>
                         </div>
-                        ${distance ? `<div class="worker-distance" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;"><i class="fas fa-location-arrow"></i> ${distance}</div>` : ''}
+                        
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
                             <div class="tracking-status ${isTrackable ? 'tracking-live' : 'tracking-unavailable'}" style="font-size: 0.75rem; color: ${isTrackable ? 'var(--neon-blue)' : 'var(--text-muted)'};">
-                                <i class="fas ${isTrackable ? 'fa-map-marker-alt' : 'fa-map-marker-slash'}"></i>
-                                ${isTrackable ? 'Live Location' : 'Tracking Unavailable'}
-                            </div>
-                            <div style="font-size: 0.75rem; color: var(--neon-blue); font-weight: 600;">
-                                <i class="fas fa-briefcase"></i> ${skill}
+                                <i class="fas ${isAssigned ? 'fa-satellite-dish fa-spin' : isTrackable ? 'fa-map-marker-alt' : 'fa-map-marker-slash'}"></i>
+                                ${isAssigned ? 'LIVE TRACKING ACTIVE' : isTrackable ? 'Live Location' : 'Tracking Unavailable'}
                             </div>
                         </div>
                         <div class="card-actions" style="display: flex; gap: 0.5rem;">
-                            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.uid}')" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fas fa-info-circle"></i> Details</button>
+                            ${isAssigned ? 
+                                `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.location.href='/chat/chat'" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; background: var(--neon-pink); border-color: var(--neon-pink); color: #fff;"><i class="fas fa-comment"></i> Chat now</button>` :
+                                `<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.uid}')" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fas fa-info-circle"></i> Details</button>`
+                            }
                             <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.openBookingPage('${w.category}')" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fas fa-calendar-check"></i> Book</button>
                         </div>
                     </div>
@@ -1947,23 +2172,27 @@ async function renderNearbyWorkers(category = 'all') {
             `;
         }).join('');
 
-        // Update map with workers and customer location
-        setTimeout(() => initNearbyMap(workers.map(w => ({
-            id: w.uid,
-            name: w.name,
-            category: w.category,
-            rating: w.rating_avg || 4.5,
-            lat: w.location?.lat,
-            lng: w.location?.lng,
-            price: w.base_price || 350,
-            isOnline: w.is_online !== false
-        })).filter(w => w.lat && w.lng)), 100);
+        // Update map with workers and customer location.
+        // Workers without a location get placed near the customer with a small random
+        // offset so they're always visible on the map. Real GPS (if stored) takes priority.
+        const mappedWorkers = workers.map(w => {
+            const hasGPS = w.location?.lat && w.location?.lng;
+            return {
+                id: w.uid,
+                name: w.name,
+                category: w.category,
+                rating: w.rating_avg || 4.5,
+                lat: hasGPS ? w.location.lat : (customerLocation.lat + (Math.random() - 0.5) * 0.03),
+                lng: hasGPS ? w.location.lng : (customerLocation.lng + (Math.random() - 0.5) * 0.03),
+                price: w.base_price || 350,
+                isOnline: w.is_online !== false,
+                hasRealGPS: hasGPS
+            };
+        });
+        setTimeout(() => initNearbyMap(mappedWorkers), 100);
 
         // Subscribe to real-time updates for all workers
-        if (typeof subscribeToWorkerUpdates === 'function') {
-            const workerIds = workers.map(w => w.uid).filter(uid => uid);
-            subscribeToWorkerUpdates(workerIds, filters);
-        }
+        subscribeToWorkerUpdates(workers.map(w => w.uid).filter(uid => uid));
 
     } catch (error) {
         console.error('Error loading nearby workers:', error);
@@ -1975,8 +2204,12 @@ async function renderNearbyWorkers(category = 'all') {
         getEl('worker-category-filter')?.addEventListener('change', (e) => {
             renderNearbyWorkers(e.target.value);
         });
-        getEl('refresh-map')?.addEventListener('click', () => {
-            renderNearbyWorkers(getEl('worker-category-filter').value);
+        getEl('refresh-map')?.addEventListener('click', async () => {
+            const btn = getEl('refresh-map');
+            btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i>';
+            await getCustomerLocation(true);
+            await renderNearbyWorkers(getEl('worker-category-filter').value);
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
         });
         window.mapControlsInitialized = true;
     }
@@ -2027,14 +2260,20 @@ function initNearbyMap(workers) {
 
             console.log('✅ Map created, adding tile layer...');
 
-            // Dark theme tile layer
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-                maxZoom: 19,
-                minZoom: 10
+            // DARK GOOGLE MAPS SKIN: High-detail tiles with premium contrast filter
+            L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+                attribution: '&copy; Google Maps',
+                maxZoom: 20
             }).addTo(nearbyMap);
 
-            console.log('✅ Tile layer added');
+            // Apply high-contrast premium dark transformation
+            const tilePane = mapEl.querySelector('.leaflet-tile-pane');
+            if (tilePane) {
+                tilePane.style.filter = 'invert(1) hue-rotate(180deg) brightness(0.75) contrast(1.1)';
+            }
+
+            console.log('✅ Google Maps Tile layer added with Dark Skin');
 
             // Add scale control
             L.control.scale({ imperial: false, metric: true }).addTo(nearbyMap);
@@ -2044,13 +2283,12 @@ function initNearbyMap(workers) {
                 options: { position: 'topright' },
                 onAdd: function () {
                     const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                    container.innerHTML = '<a href="#" title="Center on my location" style="background: rgba(15, 23, 42, 0.9); color: var(--neon-green); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid var(--glass-border);"><i class="fas fa-crosshairs"></i></a>';
-                    container.onclick = (e) => {
+                    container.innerHTML = '<a href="#" title="Fetch My Real Location" style="background: rgba(15, 23, 42, 0.95); color: var(--neon-green); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid var(--neon-green); border-radius: 8px; box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);"><i class="fas fa-location-arrow"></i></a>';
+                    container.onclick = async (e) => {
                         e.preventDefault();
-                        if (customerMarker && nearbyMap) {
-                            nearbyMap.setView(customerMarker.getLatLng(), 14);
-                            customerMarker.openPopup();
-                        }
+                        container.innerHTML = '<a style="background: rgba(15, 23, 42, 0.9); color: var(--neon-blue); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;"><i class="fas fa-spinner fa-spin"></i></a>';
+                        await getCustomerLocation(true);
+                        container.innerHTML = '<a href="#" title="Fetch My Real Location" style="background: rgba(15, 23, 42, 0.95); color: var(--neon-green); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid var(--neon-green); border-radius: 8px; box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);"><i class="fas fa-location-arrow"></i></a>';
                     };
                     return container;
                 }
@@ -2058,6 +2296,7 @@ function initNearbyMap(workers) {
             nearbyMap.addControl(new recenterControl());
 
             console.log('✅ Map fully initialized');
+
         } catch (error) {
             console.error('❌ Error creating map:', error);
             return;
@@ -2077,12 +2316,14 @@ function initNearbyMap(workers) {
 
     const customerIcon = L.divIcon({
         className: 'customer-marker-icon',
-        html: `<div style="position: relative;">
-            <div style="background: var(--neon-green); width: 20px; height: 20px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px var(--neon-green), 0 0 10px rgba(57, 255, 20, 0.5);"></div>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 8px; height: 8px; background: #000; border-radius: 50%;"></div>
+        html: `<div style="position: relative; width: 34px; height: 34px;">
+            <div style="width: 20px; height: 20px; background: #00d2ff; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px #00d2ff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2; display: flex; align-items: center; justify-content: center;">
+                <i class="fas fa-street-view" style="color: #000; font-size: 10px;"></i>
+            </div>
+            <div style="width: 34px; height: 34px; background: rgba(0, 210, 255, 0.2); border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: sonar-wave 2s infinite; z-index: 1;"></div>
         </div>`,
-        iconSize: [26, 26],
-        iconAnchor: [13, 13]
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
     });
 
     customerMarker = L.marker([customerLocation.lat, customerLocation.lng], {
@@ -2090,16 +2331,23 @@ function initNearbyMap(workers) {
         zIndexOffset: 1000
     }).addTo(nearbyMap);
 
+    // Always pan the map to the ACTUAL customer GPS immediately after marker is placed.
+    // This fixes the bug where the map was stuck at the Mumbai default it was initialized with.
+    nearbyMap.setView([customerLocation.lat, customerLocation.lng], 14);
+
     customerMarker.bindPopup(`
         <div style="background: #1a1a1a; color: #fff; padding: 12px; border-radius: 8px; font-family: 'Inter', sans-serif; min-width: 150px;">
             <h4 style="margin: 0 0 8px 0; font-size: 0.95rem; color: var(--neon-green);"><i class="fas fa-map-marker-alt"></i> Your Location</h4>
-            <p style="margin: 0; font-size: 0.75rem; color: #aaa;">Searching for workers nearby...</p>
+            <p style="margin: 0; font-size: 0.75rem; color: #aaa;">GPS: ${customerLocation.lat.toFixed(4)}, ${customerLocation.lng.toFixed(4)}</p>
         </div>
     `, { className: 'dark-popup' });
 
-    console.log('✅ Customer marker added');
+    console.log('✅ Customer marker placed at real GPS:', customerLocation);
 
-    // Add worker markers
+    // Start global watcher if not already running
+    if (!globalWatchId) startGlobalLocationWatch();
+    
+    // Add markers for workers
     console.log('Adding', workers.length, 'worker markers...');
     let addedMarkers = 0;
 
@@ -2114,18 +2362,43 @@ function initNearbyMap(workers) {
 
         const workerIcon = L.divIcon({
             className: 'worker-marker-icon',
-            html: `<div style="position: relative;">
-                <div style="background: ${categoryColor}; width: 36px; height: 36px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3), 0 0 15px ${categoryColor}80; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; color: #000;">
-                    ${initials}
+            html: `<div style="position: relative; width: 48px; height: 48px;">
+                <div style="background: ${categoryColor}; width: 26px; height: 26px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px ${categoryColor}; display: flex; align-items: center; justify-content: center; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2;">
+                    <i class="fas fa-tools" style="color: #000; font-size: 12px;"></i>
                 </div>
-                ${w.isOnline ? `<div style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; background: var(--neon-green); border: 2px solid #fff; border-radius: 50%;"></div>` : ''}
+                <div style="width: 48px; height: 48px; background: ${categoryColor}33; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); animation: sonar-wave 1.5s infinite; z-index: 1;"></div>
+                ${w.isOnline ? `<div style="position: absolute; bottom: 8px; right: 8px; width: 12px; height: 12px; background: var(--neon-green); border: 2px solid #fff; border-radius: 50%; z-index: 3;"></div>` : ''}
             </div>`,
-            iconSize: [42, 42],
-            iconAnchor: [21, 21],
-            popupAnchor: [0, -21]
+            iconSize: [48, 48],
+            iconAnchor: [24, 24],
+            popupAnchor: [0, -24]
         });
 
         const marker = L.marker([w.lat, w.lng], { icon: workerIcon }).addTo(nearbyMap);
+
+        // NEW: Real-time update for assigned professional
+        const allBookings = Storage.get('BlueBridge_bookings') || [];
+        const activeBooking = allBookings.find(b => 
+            b.workerId === w.uid && ['Assigned', 'Active', 'In_progress', 'Running', 'Accepted'].includes(b.status)
+        );
+
+        if (activeBooking && db) {
+            console.log(`📡 [REAL-TIME] Subscribing to assigned professional ${w.name} (Job: ${activeBooking.id})`);
+            onSnapshot(doc(db, 'locations', activeBooking.id), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const loc = data.workerLocation;
+                    if (loc && loc.lat && loc.lng) {
+                        marker.setLatLng([loc.lat, loc.lng]);
+                        // Add professional label if missing
+                        if (!marker.getPopup()) {
+                             marker.bindPopup(`<strong>${w.name} (Live)</strong><br>On the way to you!`);
+                        }
+                    }
+                }
+            });
+        }
+
         marker.bindPopup(`
             <div style="background: linear-gradient(145deg, #1a1a1a, #0a0b14); color: #fff; padding: 15px; border-radius: 12px; font-family: 'Inter', sans-serif; min-width: 200px; border: 1px solid ${categoryColor}40;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
@@ -2159,11 +2432,20 @@ function initNearbyMap(workers) {
     if (workers.length > 0) {
         const allMarkers = [...mapMarkers, customerMarker];
         const group = new L.featureGroup(allMarkers);
-        nearbyMap.fitBounds(group.getBounds().pad(0.1));
-        console.log('✅ Map bounds fitted');
+        try {
+            const bounds = group.getBounds();
+            if (bounds.isValid()) {
+                nearbyMap.fitBounds(bounds.pad(0.2));
+                console.log('✅ Map bounds fitted to show all markers');
+            } else {
+                nearbyMap.setView([customerLocation.lat, customerLocation.lng], 14);
+            }
+        } catch(e) {
+            nearbyMap.setView([customerLocation.lat, customerLocation.lng], 14);
+        }
     } else {
         // Just center on customer if no workers
-        nearbyMap.setView([customerLocation.lat, customerLocation.lng], 13);
+        nearbyMap.setView([customerLocation.lat, customerLocation.lng], 14);
         console.log('✅ Map centered on customer (no workers)');
     }
 
@@ -2181,6 +2463,58 @@ window.focusOnWorker = (workerId) => {
         setTimeout(() => marker.openPopup(), 300);
     }
 };
+
+/**
+ * Real-time subscription to worker location updates
+ */
+function subscribeToWorkerUpdates(workerIds) {
+    if (workerUnsubscribe) {
+        workerUnsubscribe();
+        workerUnsubscribe = null;
+    }
+
+    if (!workerIds || workerIds.length === 0) return;
+    if (!db || !onSnapshot) {
+        console.warn('Firestore not available for real-time tracking');
+        return;
+    }
+
+    console.log('📡 Subscribing to live updates for workers:', workerIds);
+
+    // Limit to 10 workers for the 'in' query to avoid Firestore limits
+    const cappedIds = workerIds.slice(0, 10);
+
+    try {
+        const q = query(
+            collection(db, 'users'),
+            where('uid', 'in', cappedIds)
+        );
+
+        workerUnsubscribe = onSnapshot(q, (snapshot) => {
+            console.log(`🔔 Received real-time update for ${snapshot.size} workers`);
+            
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === 'modified' || change.type === 'added') {
+                    const data = change.doc.data();
+                    const uid = change.doc.id;
+                    const location = data.location;
+                    
+                    if (location && location.lat && location.lng) {
+                        const marker = mapMarkers.find(m => m.workerId === uid);
+                        if (marker) {
+                            console.log(`📍 Moving marker for worker ${uid} to:`, location);
+                            marker.setLatLng([location.lat, location.lng]);
+                        }
+                    }
+                }
+            });
+        }, (error) => {
+            console.error('❌ subscribeToWorkerUpdates listener error:', error);
+        });
+    } catch (err) {
+        console.error('❌ Failed to setup worker tracking query:', err);
+    }
+}
 
 // --- Chat Helper Functions (Restored) ---
 function appendChatMessage(sender, text) {

@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // WORKER DASHBOARD - COMPLETE IMPLEMENTATION
 // ============================================
 
@@ -7,7 +7,29 @@ import { API, apiFetch } from '../../../api/api.js';
 import { Storage, getRelativeTime, showToast, showLoading, hideLoading, showConfirm } from '../../../utils/utils.js';
 import { auth, db, collection, query, where, onSnapshot, orderBy, doc, getDoc } from '../../../utils/config.js';
 
+// --- GLASS COCKPIT GLOBAL STATE ---
+let globalWorkerWatchId = null;
+window.activeBookingIds = [];
+
+// --- RE-RENDER OPTIMIZATION STATE ---
+let lastRenderedActiveJobs = [];
+let lastRenderedJobRequests = [];
+let lastRenderedJobHistory = [];
+
+const isListIdentical = (newList, oldList) => {
+  if (!newList || !oldList) return false;
+
+  if (newList.length !== oldList.length) return false;
+  if (newList.length === 0 && oldList.length === 0) return true;
+
+  return newList.every((newJob, idx) => {
+    const oldJob = oldList[idx];
+    return newJob && oldJob && newJob.id === oldJob.id && newJob.status === oldJob.status;
+  });
+};
+
 // ============================================
+
 // GLOBAL JOB ACTIONS (Defined early to ensure availability)
 // ============================================
 window.acceptJob = async function (jobId) {
@@ -346,12 +368,19 @@ async function initDashboard() {
     await refreshDashboardData();
     loadDemoDataIfEmpty();
     loadPage('home');
+
+    // --- GLASS COCKPIT: START SYNC ENGINE ---
+    const user = Storage.get('BlueBridge_user');
+    if (user && user.uid) subscribeToWorkerJobs(user.uid);
+    
+    await initGlobalBookingSync();
   } catch (err) {
     console.error('Initial data load failed:', err);
     loadDemoDataIfEmpty();
     loadPage('home');
   }
 } // End initDashboard
+
 
 // ============================================
 // DATA MANAGEMENT
@@ -393,11 +422,11 @@ function subscribeToWorkerJobs(uid) {
     if (activeJobsStat) activeJobsStat.textContent = dashboardData.jobs.active.length;
 
     // Refresh Current View if applicable
-    // We can infer current page from active nav link or just try to refresh both lists
-    const requestList = document.getElementById('job-requests-container');
+    // Check both potential container IDs (Home vs dedicated pages)
+    const requestList = document.getElementById('jobRequestsList');
     if (requestList) fetchAndRenderJobRequests();
 
-    const activeList = document.getElementById('active-jobs-container');
+    const activeList = document.getElementById('activeJobsList');
     if (activeList) fetchAndRenderActiveJobs();
 
   }, error => {
@@ -428,9 +457,6 @@ const transformBookingToJob = (b) => ({
 async function refreshDashboardData() {
   const user = Storage.get('BlueBridge_user');
   if (!user || !user.uid) return;
-
-  // Initialize Real-time Listener (Idempotent)
-  subscribeToWorkerJobs(user.uid);
 
   try {
     // 0. Fetch Latest Profile
@@ -781,10 +807,15 @@ async function renderWorkerRecentActivity(userId) {
     if (!container) return;
 
     try {
-        const [jobs, transactions] = await Promise.all([
-            API.jobs.getMyJobs(userId, 'worker'),
-            API.transactions.getByUser(userId)
+        // --- ADDED RESILIENCE: Timeout for Activity Fetch ---
+        const fetchWithTimeout = (promise, ms = 7000) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms))]);
+        const results = await Promise.allSettled([
+            fetchWithTimeout(API.jobs.getMyJobs(userId, 'worker')),
+            fetchWithTimeout(API.transactions.getByUser(userId))
         ]);
+        const jobs = results[0].status === 'fulfilled' ? results[0].value : [];
+        const transactions = results[1].status === 'fulfilled' ? results[1].value : [];
+
 
         let activities = [];
 
@@ -1864,22 +1895,10 @@ async function fetchAndRenderJobRequests() {
   const listContainer = document.getElementById('jobRequestsList');
   if (!listContainer) return;
 
-  // Show loading spinner
-  listContainer.innerHTML = `
-      <div style="text-align:center; padding: 2rem;">
-          <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--neon-blue);"></i>
-          <p style="margin-top: 1rem; color: var(--text-tertiary);">Loading job requests...</p>
-      </div>
-  `;
-
   try {
-    // Refresh data from Firestore bookings
-    console.log('Fetching fresh bookings from Firestore...');
-    await refreshDashboardData();
-
-    // Use dashboardData.jobs.pending (already transformed from bookings)
+    // Rely on dashboardData which is updated in REAL-TIME by subscribeToWorkerJobs
     const jobs = dashboardData.jobs.pending || [];
-    console.log(`Loaded ${jobs.length} pending jobs from bookings`);
+    console.log(`ðŸ“¡ [AUTOPILOT] Rendering ${jobs.length} job requests from live sync`);
 
     // Render the jobs
     renderJobRequestsList(jobs, listContainer);
@@ -1912,6 +1931,15 @@ async function fetchAndRenderJobRequests() {
 }
 
 function renderJobRequestsList(jobs, container) {
+  // --- GLASS COCKPIT: FLICKER-FREE RENDERING ---
+  const isInitialLoad = container.innerHTML.includes('Loading...') || container.innerHTML.includes('Syncing...') || container.innerHTML === '';
+  if (!isInitialLoad && isListIdentical(jobs, lastRenderedJobRequests)) {
+
+    console.log('ðŸ“¡ [AUTOPILOT] Skipping redundant render for job requests');
+    return;
+  }
+  lastRenderedJobRequests = [...jobs];
+
   if (jobs.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 2.5rem 1.5rem; text-align:center; gap:1rem;">
@@ -1928,7 +1956,7 @@ function renderJobRequestsList(jobs, container) {
   }
 
   container.innerHTML = jobs.map(job => `
-          <div class="job-request-item" style="animation: slideUp 0.3s ease-out;">
+          <div class="job-request-item">
             <div class="job-request-header">
               <div style="flex:1;">
                 <h4 style="margin:0;">${job.serviceType}</h4>
@@ -1955,42 +1983,10 @@ async function fetchAndRenderActiveJobs() {
   const listContainer = document.getElementById('activeJobsList');
   if (!listContainer) return;
 
-  // 1. Try to load from cache first
-  const cachedActive = Storage.get('worker_active_jobs_cache');
-  if (cachedActive && Array.isArray(cachedActive) && cachedActive.length > 0) {
-    renderActiveJobsList(cachedActive, listContainer);
-    const countEl = document.getElementById('active-jobs-count');
-    if (countEl) countEl.textContent = cachedActive.length;
-  } else {
-    // Show loading only if no cache
-    listContainer.innerHTML = `
-          <div style="text-align:center; padding: 2rem;">
-              <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--neon-blue);"></i>
-              <p style="margin-top: 1rem; color: var(--text-tertiary);">Loading active jobs...</p>
-          </div>
-      `;
-  }
-
   try {
-    const user = Storage.get('BlueBridge_user');
-    // Fetch fresh data
-    console.log('Fetching fresh active jobs...');
-    // 1. Fetch Assigned/Active Jobs
-    const assignedResponse = await API.bookings.getByUser(user.uid, 'worker');
-    
-    // 2. Fetch Global Pending Pool (for "New Requests")
-    const pendingPoolResponse = await apiFetch(`/bookings?status=pending&role=worker`);
-    
-    // Combine and mark
-    const allBookings = [
-        ...(assignedResponse || []).map(b => ({ ...b, isAssignedToMe: true })),
-        ...(pendingPoolResponse || []).map(b => ({ ...b, isFromPool: true }))
-    ];
-
-    // Remove duplicates (if any)
-    const uniqueBookings = Array.from(new Map(allBookings.map(b => [b.id, b])).values());
-    const allJobs = uniqueBookings.map(transformBookingToJob);
-    const activeJobs = allJobs.filter(j => j.status === 'assigned' || j.status === 'in_progress');
+    // Rely on dashboardData which is updated in REAL-TIME by subscribeToWorkerJobs
+    const activeJobs = dashboardData.jobs.active || [];
+    console.log(`ðŸ“¡ [AUTOPILOT] Rendering ${activeJobs.length} active jobs from live sync`);
 
     // Update Cache & UI
     Storage.set('worker_active_jobs_cache', activeJobs);
@@ -2043,6 +2039,16 @@ window.addPortfolioField = function () {
 };
 
 window.renderActiveJobsList = function (activeJobs, container) {
+  // --- GLASS COCKPIT: FLICKER-FREE RENDERING ---
+  const isInitialLoad = container.innerHTML.includes('Loading...') || container.innerHTML.includes('Syncing...') || container.innerHTML === '';
+  if (!isInitialLoad && isListIdentical(activeJobs, lastRenderedActiveJobs)) {
+
+    console.log('ðŸ“¡ [AUTOPILOT] Skipping redundant render for active jobs');
+    return;
+  }
+  
+  lastRenderedActiveJobs = [...activeJobs];
+
   if (activeJobs.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 2.5rem 1.5rem; text-align:center; gap:1rem;">
@@ -2062,7 +2068,7 @@ window.renderActiveJobsList = function (activeJobs, container) {
   }
 
   container.innerHTML = activeJobs.map(job => `
-          <div class="job-card active-job-card" style="animation: slideUp 0.3s ease-out; border-left: 4px solid var(--neon-blue); background: var(--bg-secondary);">
+          <div class="job-card active-job-card" style="border-left: 4px solid var(--neon-blue); background: var(--bg-secondary);">
             <div class="job-card-header">
               <div>
                 <h3 style="margin:0; color:var(--text-primary);">${job.serviceType}</h3>
@@ -2088,7 +2094,10 @@ window.renderActiveJobsList = function (activeJobs, container) {
               </div>
             </div>
 
+            <div id="mission-radar-${job.id}" style="margin-bottom: 1.5rem;"></div>
+
             <div class="job-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+
               <button class="btn btn-success" style="grid-column: span 2; padding: 1rem; font-weight: 700;" onclick="completeJob('${job.id}')">
                 <i class="fas fa-check-double" style="margin-right: 8px;"></i> Mark as Complete
               </button>
@@ -2104,10 +2113,17 @@ window.renderActiveJobsList = function (activeJobs, container) {
               <button class="btn btn-ghost" style="grid-column: span 2; border: 1px dashed rgba(255,255,255,0.2); font-size: 0.8rem; margin-top: 0.5rem;" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.customerAddress || job.address)}')">
                 <i class="fas fa-directions" style="margin-right: 8px;"></i> Get Directions (Google Maps)
               </button>
-            </div>
-          </div>
           `).join('');
+
+  // --- GLASS COCKPIT: AUTO-TRIGGER RADAR MAPS ---
+  setTimeout(() => {
+    activeJobs.forEach(job => {
+      console.log(`ðŸ“¡ [AUTOPILOT] Signaling Radar for Job: ${job.id}`);
+      initActiveMissionMap(job.id);
+    });
+  }, 100);
 }
+
 
 async function fetchAndRenderJobHistory() {
   const listContainer = document.getElementById('jobHistoryList');
@@ -2134,7 +2150,7 @@ async function fetchAndRenderJobHistory() {
     const earningsEl = document.getElementById('history-earnings');
     
     if (countEl) countEl.textContent = completedJobs.length;
-    if (earningsEl) earningsEl.textContent = `₹${totalEarnings.toLocaleString()}`;
+    if (earningsEl) earningsEl.textContent = `â‚¹${totalEarnings.toLocaleString()}`;
 
     // 4. Render the list
     renderJobHistoryList(completedJobs, listContainer);
@@ -2155,7 +2171,7 @@ function renderJobHistoryList(jobs, container) {
   if (jobs.length === 0) {
     container.innerHTML = `
           <div class="empty-state" style="padding: 4rem 2rem; text-align:center; border-radius: 24px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1);">
-             <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1.5rem;">📜</div>
+             <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1.5rem;">ðŸ“œ</div>
              <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">No Job History Yet</h3>
              <p style="color: var(--text-tertiary); margin-bottom: 2rem; max-width: 300px; margin-left:auto; margin-right:auto;">Your finished jobs and earned income will appear here once you complete your first service.</p>
              <button class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px;" onclick="loadPage('home')">Return to Dashboard</button>
@@ -2190,7 +2206,7 @@ function renderJobHistoryList(jobs, container) {
                 <span title="Completion Date" style="font-size: 0.85rem; color: var(--text-tertiary); display:flex; align-items:center; gap:6px;"><i class="fas fa-calendar-check" style="opacity:0.6;"></i> ${job.completedAt ? new Date(job.completedAt).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : (job.scheduledDate || 'Recently')}</span>
                 <span title="Booking Reference" style="font-size: 0.85rem; color: var(--text-tertiary); display:flex; align-items:center; gap:6px;"><i class="fas fa-fingerprint" style="opacity:0.6;"></i> #${(job.id || 'N/A').toString().slice(-6).toUpperCase()}</span>
               </div>
-              <span style="font-weight: 800; color: var(--success); font-size: 1.4rem;">₹${job.price}</span>
+              <span style="font-weight: 800; color: var(--success); font-size: 1.4rem;">â‚¹${job.price}</span>
             </div>
           </div>
           `).join('');
@@ -2247,10 +2263,162 @@ window.fetchAndRenderJobRequests = fetchAndRenderJobRequests;
 window.fetchAndRenderActiveJobs = fetchAndRenderActiveJobs;
 window.fetchAndRenderJobHistory = fetchAndRenderJobHistory;
 
-// Wait for the #contentArea to be present in DOM (injected by React) then boot
+// --- GLASS COCKPIT: LIVE TRACKING & MISSION RADAR ---
+async function startGlobalLocationWatch() {
+    if (!navigator.geolocation) {
+        console.warn('Geolocation not supported');
+        return;
+    }
+
+    if (globalWorkerWatchId) navigator.geolocation.clearWatch(globalWorkerWatchId);
+
+    console.log('ðŸ›°ï¸ [WORKER] Starting Global Live Tracking Watch...');
+    
+    globalWorkerWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const { latitude, longitude, accuracy } = position.coords;
+            console.log(`ðŸ“ [WORKER] GPS Update: ${latitude}, ${longitude}`);
+            
+            // AUTO-SYNC: Push worker location to any active jobs so customers can track them
+            if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
+                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+                
+                window.activeBookingIds.forEach(bookingId => {
+                    console.log(`ðŸ›°ï¸ [WORKER] Broadcasting Signal for Job: ${bookingId}`);
+                    // Direct API sync (redundant to Firestore for dual-availability)
+                    fetch(`${apiBase}/location/${bookingId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            userId: Storage.get('BlueBridge_user')?.uid || 'anonymous',
+                            userType: 'worker',
+                            latitude,
+                            longitude,
+                            accuracy,
+                            timestamp: new Date().toISOString()
+                        })
+                    }).catch(e => console.warn('Silent sync failed for job:', bookingId));
+                });
+            }
+        },
+        (error) => console.warn('âŒ [WORKER] Watch Error:', error.message),
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+    );
+}
+
+async function initGlobalBookingSync() {
+    console.log('ðŸ“¡ [WORKER SYNC] Initializing Global Job Signal...');
+    const user = Storage.get('BlueBridge_user');
+    if (!user) return;
+
+    try {
+        const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
+        
+        // Initial fetch to get active jobs
+        const res = await fetch(`${apiBase}/jobs/active?workerId=${user.uid}`);
+        const jobs = await res.json();
+        
+        const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
+        window.activeBookingIds = (jobs || [])
+            .filter(j => activeStatuses.includes((j.status || '').toLowerCase()))
+            .map(j => j.id);
+
+        console.log(`ðŸ“¡ [WORKER SYNC] Found ${window.activeBookingIds.length} active jobs to broadcast.`);
+
+        if (window.activeBookingIds.length > 0) {
+            startGlobalLocationWatch();
+            // Trigger radar for active jobs
+            setTimeout(() => {
+                window.activeBookingIds.forEach(id => initActiveMissionMap(id));
+            }, 1000);
+        }
+    } catch (err) {
+        console.warn('ðŸ“¡ [WORKER SYNC] Initial fetch failed:', err);
+    }
+}
+
+async function initActiveMissionMap(bookingId) {
+    const container = document.getElementById(`mission-radar-${bookingId}`);
+    if (!container) return;
+
+    console.log(`ðŸš€ [MISSION RADAR] Deploying Signal for: ${bookingId}`);
+    
+    container.innerHTML = `
+        <div class="mission-radar-wrapper" style="position:relative; width:100%; height:180px; background:rgba(0,0,0,0.4); border-radius:15px; overflow:hidden; border:1px solid rgba(0,255,255,0.1);">
+            <div class="radar-pulse"></div>
+            <div class="radar-sweep"></div>
+            <div id="map-${bookingId}" style="width:100%; height:100%; opacity:0.6; pointer-events:none;"></div>
+            <div style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:20px; font-size:10px; color:#00f2ff; border:1px solid #00f2ff;">
+                LIVE TELEMETRY
+            </div>
+            <div id="customer-status-${bookingId}" style="position:absolute; top:10px; left:10px; font-size:11px; color:#fff; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:4px;">
+                Waiting for signal...
+            </div>
+        </div>
+    `;
+
+    if (typeof L === 'undefined') {
+        console.warn('Leaflet not loaded yet, retrying radar map...');
+        setTimeout(() => initActiveMissionMap(bookingId), 1000);
+        return;
+    }
+
+    const map = L.map(`map-${bookingId}`, { zoomControl: false, attributionControl: false }).setView([28.4089, 77.3178], 15);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+    let customerMarker = L.circleMarker([28.4089, 77.3178], {
+        radius: 8,
+        color: '#00f2ff',
+        fillColor: '#00f2ff',
+        fillOpacity: 0.8,
+        className: 'gps-pulse-customer'
+    }).addTo(map);
+
+    // Fetch initial state
+    getDoc(doc(db, 'locations', bookingId)).then(docSnap => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.customer?.latitude) {
+                const pos = [data.customer.latitude, data.customer.longitude];
+                customerMarker.setLatLng(pos);
+                map.setView(pos, 15);
+                document.getElementById(`customer-status-${bookingId}`).innerHTML = 
+                    `<span style="color:#00f2ff;">â—</span> SIGNAL ESTABLISHED`;
+            }
+        }
+    });
+
+    onSnapshot(doc(db, 'locations', bookingId), (docSnap) => {
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            const customerLoc = data.customer;
+            if (customerLoc && customerLoc.latitude) {
+                const newPos = [customerLoc.latitude, customerLoc.longitude];
+                customerMarker.setLatLng(newPos);
+                map.panTo(newPos);
+                document.getElementById(`customer-status-${bookingId}`).innerHTML = 
+                    `<span style="color:#00f2ff;">â—</span> CUSTOMER SIGNAL DETECTED`;
+            }
+        }
+    });
+}
+
+
+
+// ============================================
+// GLOBAL EXPOSURE (For cross-script access)
+// ============================================
+window.fetchAndRenderActiveJobs = fetchAndRenderActiveJobs;
+window.fetchAndRenderJobRequests = fetchAndRenderJobRequests;
+window.fetchAndRenderJobHistory = fetchAndRenderJobHistory;
+window.refreshDashboardData = refreshDashboardData;
+window.isListIdentical = isListIdentical;
+window.renderJobRequestsList = renderJobRequestsList;
+window.renderActiveJobsList = renderActiveJobsList;
+
 function waitForDOMAndInit() {
-  if (document.getElementById('contentArea')) {
-    console.log('[WORKER DASHBOARD] DOM ready, starting initDashboard...');
+  if (document.getElementById('main-content') || document.body) {
+    console.log('[WORKER DASHBOARD] Ready. Initializing...');
     initDashboard();
   } else {
     console.log('[WORKER DASHBOARD] Waiting for DOM...');

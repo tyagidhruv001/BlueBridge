@@ -45,13 +45,13 @@ const CustomCursor = () => {
 
     return (
         <>
-            <div 
+            <div
                 className={`custom-cursor-dot ${isHovering ? 'hovering' : ''} ${isClicked ? 'clicked' : ''}`}
                 style={{
                     transform: `translate3d(${position.x}px, ${position.y}px, 0)`
                 }}
             ></div>
-            <div 
+            <div
                 className={`custom-cursor-ring ${isHovering ? 'hovering' : ''} ${isClicked ? 'clicked' : ''}`}
                 style={{
                     transform: `translate3d(${position.x}px, ${position.y}px, 0)`

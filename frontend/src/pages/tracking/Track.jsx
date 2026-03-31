@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Storage } from '../../utils/utils';
+import { db, doc, onSnapshot } from '../../utils/config';
 
-const PositionStackKey = import.meta.env.VITE_POSITIONSTACK_API_KEY || ''; 
+// Nominatim (OpenStreetMap) is used for free reverse geocoding instead of PositionStack
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse?format=json';
 
 const TrackLocation = () => {
     const mapRef = useRef(null);
@@ -10,13 +12,13 @@ const TrackLocation = () => {
     const myMarkerRef = useRef(null);
     const theirMarkerRef = useRef(null);
     const polylineRef = useRef(null);
-    const intervalId = useRef(null);
+    const userInteracted = useRef(false);
     
     // UI State
-    const [distance, setDistance] = useState('--');
-    const [eta, setEta] = useState('--');
-    const [statusText, setStatusText] = useState('Locating Professional...');
-    const [addressName, setAddressName] = useState('Waiting for location...');
+    const [distance, setDistance] = useState('---');
+    const [eta, setEta] = useState('---');
+    const [statusText, setStatusText] = useState('Calibrating Link...');
+    const [addressName, setAddressName] = useState('Establishing contact...');
     const [myLat, setMyLat] = useState(null);
     const [myLng, setMyLng] = useState(null);
     const [theirLat, setTheirLat] = useState(null);
@@ -32,45 +34,45 @@ const TrackLocation = () => {
 
     // Init Map
     useEffect(() => {
-        if (!window.L) {
-            console.error("Leaflet not loaded");
-            return;
-        }
+        if (!window.L || !mapRef.current) return;
 
         // Initialize empty map
-        mapInstance.current = window.L.map(mapRef.current).setView([20.5937, 78.9629], 5); // Default to India
+        mapInstance.current = window.L.map(mapRef.current, {
+            zoomControl: false
+        }).setView([20.5937, 78.9629], 5); // Default to India
 
-        window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap contributors'
+        window.L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            attribution: '&copy; Google Maps',
+            maxZoom: 20
         }).addTo(mapInstance.current);
+
+        window.L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
+
+        mapInstance.current.on('mousedown touchstart dragstart', () => {
+            userInteracted.current = true;
+        });
 
         return () => {
             if (mapInstance.current) {
                 mapInstance.current.remove();
                 mapInstance.current = null;
             }
-            if (intervalId.current) {
-                clearInterval(intervalId.current);
-            }
         };
     }, []);
 
     const fetchAddress = async (lat, lng) => {
-        if (!PositionStackKey) {
-            setAddressName(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)} (No API Key)`);
-            return;
-        }
-        
+        if (!lat || !lng) return;
         try {
-            const url = `http://api.positionstack.com/v1/reverse?access_key=${PositionStackKey}&query=${lat},${lng}&limit=1`;
-            const req = await fetch(url);
+            const url = `${NOMINATIM_URL}&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+            const req = await fetch(url, { headers: { 'User-Agent': 'BlueBridge-App' } });
             const res = await req.json();
-            if (res.data && res.data.length > 0) {
-                setAddressName(res.data[0].label || res.data[0].name || "Address found");
+            if (res.display_name) {
+                setAddressName(res.display_name);
             }
         } catch (e) {
             console.error("Geocoding failed", e);
+            setAddressName(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
         }
     };
 
@@ -79,200 +81,348 @@ const TrackLocation = () => {
 
         const bounds = window.L.latLngBounds();
 
-        // Update My Marker
+        // --- Update My Marker (Blue/Cyan) ---
         if (mine.lat && mine.lng) {
             const latlng = [mine.lat, mine.lng];
+            const myIcon = window.L.divIcon({
+                className: 'custom-div-icon',
+                html: `
+                    <div style="position: relative; width: 24px; height: 24px;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 12px; height: 12px; background: #00d2ff; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 15px #00d2ff; z-index: 2;"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; background: rgba(0, 210, 255, 0.2); border-radius: 50%; animation: sonar-wave 2s infinite; z-index: 1;"></div>
+                    </div>
+                `,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
             if (!myMarkerRef.current) {
-                myMarkerRef.current = window.L.marker(latlng, {
-                    icon: window.L.icon({
-                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [1, -34],
-                        shadowSize: [41, 41]
-                    })
-                }).addTo(mapInstance.current).bindPopup("You");
+                myMarkerRef.current = window.L.marker(latlng, { icon: myIcon, zIndexOffset: 1000 }).addTo(mapInstance.current);
             } else {
                 myMarkerRef.current.setLatLng(latlng);
             }
             bounds.extend(latlng);
         }
 
-        // Update Their Marker
+        // --- Update Their Marker (Gold) ---
         if (theirs.lat && theirs.lng) {
             const latlng = [theirs.lat, theirs.lng];
+            const targetColor = '#ffb800'; 
+            const targetLabel = userRole === 'customer' ? 'Professional' : 'Customer';
+            const iconClass = userRole === 'customer' ? 'fa-user-tie' : 'fa-user';
+            
+            const targetIcon = window.L.divIcon({
+                className: 'custom-div-icon',
+                html: `
+                    <div style="position: relative; width: 40px; height: 40px;">
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 22px; height: 22px; background: ${targetColor}; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 20px ${targetColor}; z-index: 2; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas ${iconClass}" style="color: #000; font-size: 10px;"></i>
+                        </div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; background: ${targetColor}33; border-radius: 50%; animation: sonar-wave 1.2s infinite; z-index: 1;"></div>
+                    </div>
+                `,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+
             if (!theirMarkerRef.current) {
-                theirMarkerRef.current = window.L.marker(latlng, {
-                    icon: window.L.icon({
-                        iconUrl: 'https://cdn.rawgit.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                        iconSize: [25, 41],
-                        iconAnchor: [12, 41],
-                        popupAnchor: [1, -34],
-                        shadowSize: [41, 41]
-                    })
-                }).addTo(mapInstance.current).bindPopup(theirRole === 'worker' ? "Professional" : "Customer");
+                theirMarkerRef.current = window.L.marker(latlng, { icon: targetIcon, zIndexOffset: 500 }).addTo(mapInstance.current);
+                setStatusText(`${targetLabel} Found`);
                 fetchAddress(theirs.lat, theirs.lng);
             } else {
                 theirMarkerRef.current.setLatLng(latlng);
+                if (addressName === 'Establishing contact...') {
+                    fetchAddress(theirs.lat, theirs.lng);
+                }
             }
             bounds.extend(latlng);
-            setStatusText("Location Tracking Active");
+            if (statusText === 'Locating Target...') setStatusText('Tracking Live');
         }
 
-        // Draw Line
+        // --- Draw Glowing Path ---
         if (mine.lat && mine.lng && theirs.lat && theirs.lng) {
-            const p1 = [mine.lat, mine.lng];
-            const p2 = [theirs.lat, theirs.lng];
-            
+            const path = [[mine.lat, mine.lng], [theirs.lat, theirs.lng]];
             if (!polylineRef.current) {
-                polylineRef.current = window.L.polyline([p1, p2], {color: 'red'}).addTo(mapInstance.current);
+                polylineRef.current = window.L.polyline(path, { 
+                    color: '#ffb800', 
+                    dashArray: '8, 12', 
+                    opacity: 0.4, 
+                    weight: 3 
+                }).addTo(mapInstance.current);
             } else {
-                polylineRef.current.setLatLngs([p1, p2]);
+                polylineRef.current.setLatLngs(path);
             }
 
-            // Simple distance calculation (Haversine formula approximation)
-            const R = 6371; // km
-            const dLat = (p2[0]-p1[0]) * Math.PI / 180;
-            const dLon = (p2[1]-p1[1]) * Math.PI / 180;
-            const a = 
-                Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(p1[0] * Math.PI / 180) * Math.cos(p2[0] * Math.PI / 180) * 
-                Math.sin(dLon/2) * Math.sin(dLon/2); 
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-            const d = R * c;
-            
-            setDistance(d.toFixed(2));
-            setEta(Math.round((d / 30) * 60)); // Assuming 30km/h average speed in city
+            const dist = mapInstance.current.distance([mine.lat, mine.lng], [theirs.lat, theirs.lng]) / 1000;
+            setDistance(dist.toFixed(2));
+            setEta(Math.round(dist * 5)); 
         }
 
-        if (bounds.isValid()) {
-            mapInstance.current.fitBounds(bounds, { padding: [50, 50] });
+        if (bounds.isValid() && !userInteracted.current) {
+            mapInstance.current.fitBounds(bounds, { padding: [100, 100] });
         }
     };
 
-    const fetchOtherLocation = async () => {
-        if (!bookingId) return;
-
+    const getIPLocation = async () => {
         try {
-            const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                ? 'http://localhost:5000/api' : '/api';
-                
-            const res = await fetch(`${apiBase}/location/${bookingId}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success && data.data) {
-                    const theirLoc = data.data[`${theirRole}Location`];
-                    if (theirLoc) {
-                        setTheirLat(theirLoc.lat);
-                        setTheirLng(theirLoc.lng);
-                        updateMapMarkers({ lat: myLat, lng: myLng }, { lat: theirLoc.lat, lng: theirLoc.lng });
-                    }
-                }
+            console.log('🌐 Tracking Fallback: fetching IP location...');
+            const res = await fetch('https://ipapi.co/json/');
+            const data = await res.json();
+            if (data && data.latitude && data.longitude) {
+                const { latitude, longitude } = data;
+                setMyLat(latitude);
+                setMyLng(longitude);
+                updateMapMarkers({ lat: latitude, lng: longitude }, { lat: theirLat, lng: theirLng });
+                syncLocationToDB(latitude, longitude);
+                return true;
             }
         } catch (e) {
-            console.error("Failed to fetch location", e);
+            console.error('IP Fallback failed', e);
         }
+        return false;
+    };
+
+    const syncLocationToDB = (latitude, longitude) => {
+        if (!bookingId) return;
+        const userData = Storage.get('BlueBridge_user');
+        const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:5000/api' : '/api';
+
+        fetch(`${apiBase}/location/${bookingId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: userData?.uid || 'anonymous',
+                userType: userRole,
+                latitude,
+                longitude,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(err => console.error('GPS sync error:', err));
     };
 
     const getMyLocation = () => {
         if (!navigator.geolocation) {
-            alert("Geolocation not supported by your browser");
+            getIPLocation();
             return;
         }
-
+        
+        setStatusText('Sharing your location...');
+        
         navigator.geolocation.getCurrentPosition(
             (pos) => {
                 const { latitude, longitude } = pos.coords;
                 setMyLat(latitude);
                 setMyLng(longitude);
                 updateMapMarkers({ lat: latitude, lng: longitude }, { lat: theirLat, lng: theirLng });
-                
-                // Also update backend with my location so the other person can see where I am
-                const userData = Storage.get('BlueBridge_user');
-                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-                    ? 'http://localhost:5000/api' : '/api';
-                    
-                fetch(`${apiBase}/location/${bookingId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: userData?.uid || 'anonymous',
-                        userType: userRole,
-                        latitude,
-                        longitude,
-                        timestamp: new Date().toISOString()
-                    })
-                }).catch(err => console.error(err));
+                syncLocationToDB(latitude, longitude);
             },
-            (err) => {
-                alert("Failed to get your location");
-                console.error(err);
-            }
+            async (err) => {
+                console.warn('Geolocation failed, trying IP...', err);
+                const success = await getIPLocation();
+                if (!success) setStatusText('Location Blocked');
+            },
+            { enableHighAccuracy: true, timeout: 5000 }
         );
     };
 
+    // My Watcher
     useEffect(() => {
-        // Fetch initially
-        fetchOtherLocation();
-        
-        // Poll every 5 seconds
-        intervalId.current = setInterval(fetchOtherLocation, 5000);
-        
-        return () => clearInterval(intervalId.current);
-    }, [bookingId, myLat, myLng]);
+        if (!navigator.geolocation || !bookingId) return;
+
+        const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+                const { latitude, longitude } = pos.coords;
+                setMyLat(latitude);
+                setMyLng(longitude);
+                updateMapMarkers({ lat: latitude, lng: longitude }, { lat: theirLat, lng: theirLng });
+                syncLocationToDB(latitude, longitude);
+            },
+            (err) => {
+                console.warn('Watch error', err);
+                if (!myLat) getIPLocation();
+            },
+            { enableHighAccuracy: true, maximumAge: 0 }
+        );
+
+        return () => navigator.geolocation.clearWatch(watchId);
+    }, [bookingId, theirLat, theirLng]);
+
+    // Multi-Role Listener (Source of Truth: Firestore)
+    useEffect(() => {
+        if (!bookingId || !db) return;
+
+        console.log(`🛰️ Establishing DB Connection for Booking: ${bookingId}`);
+        const unsub = onSnapshot(doc(db, 'locations', bookingId), (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.data();
+                
+                // Update My Data from DB (Sync from other tabs)
+                const me = data[`${userRole}Location`];
+                if (me && me.lat && me.lng) {
+                    setMyLat(me.lat);
+                    setMyLng(me.lng);
+                }
+
+                // Update Their Data from DB (Live)
+                const them = data[`${theirRole}Location`];
+                if (them && them.lat && them.lng) {
+                    setTheirLat(them.lat);
+                    setTheirLng(them.lng);
+                    if (statusText.includes('Locating') || statusText.includes('contact')) {
+                        setStatusText('Signal Locked');
+                    }
+                }
+
+                // Refresh Markers if data exists
+                if (me?.lat || them?.lat) {
+                    updateMapMarkers(
+                        me || { lat: myLat, lng: myLng }, 
+                        them || { lat: theirLat, lng: theirLng }
+                    );
+                }
+            }
+        });
+
+        return () => unsub();
+    }, [bookingId, userRole, theirRole]);
 
     return (
-        <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: '#0f0f0f', color: '#fff', height: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ background: 'rgba(30, 32, 58, 0.95)', backdropFilter: 'blur(10px)', padding: '1rem 1.5rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', alignItems: 'center', gap: '1rem', zIndex: 1001 }}>
-                <button onClick={() => navigate(-1)} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: '1.2rem', cursor: 'pointer' }}>
-                    <i className="fas fa-arrow-left"></i>
+        <div style={{ position: 'relative', width: '100vw', height: '100vh', background: '#050608', color: '#fff', overflow: 'hidden', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
+            
+            {/* --- TOP NAVIGATION BAR --- */}
+            <div style={{ 
+                position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1000, 
+                display: 'flex', alignItems: 'center', padding: '1rem 1.5rem',
+                background: 'linear-gradient(to bottom, rgba(5, 6, 8, 0.9) 0%, rgba(5, 6, 8, 0.4) 50%, transparent 100%)',
+                backdropFilter: 'blur(8px)'
+            }}>
+                <button onClick={() => navigate(-1)} style={{ 
+                    background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', 
+                    color: '#fff', width: '40px', height: '40px', borderRadius: '12px', 
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1rem', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }} className="nav-back-btn">
+                    <i className="fas fa-chevron-left"></i>
                 </button>
-                <h1 style={{ fontSize: '1.2rem', flex: 1, margin: 0 }}>📍 Track Professional</h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', borderRadius: '20px', fontSize: '0.85rem', background: theirLat ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 206, 0, 0.2)', color: theirLat ? '#00ff88' : '#ffce00' }}>
-                    {!theirLat && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor', animation: 'pulse 2s infinite' }}></span>}
-                    <span>{statusText}</span>
-                </div>
-            </div>
-
-            <div ref={mapRef} style={{ flex: 1, zIndex: 1, backgroundColor: '#1a1a1a' }}></div>
-
-            <div style={{ position: 'absolute', top: '90px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(30, 32, 58, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', padding: '1.5rem', minWidth: '320px', zIndex: 1000, boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)' }}>
-                <h3 style={{ marginBottom: '1rem', color: '#00d2ff', fontSize: '1.1rem', margin: '0 0 1rem 0' }}>📍 Location Status</h3>
                 
-                {theirLat && (
-                    <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(0,0,0,0.3)', borderRadius: '8px', fontSize: '0.9rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <i className="fas fa-map-marker-alt" style={{ color: '#ff3b30' }}></i>
-                        {addressName}
+                <div style={{ marginLeft: '1.2rem', flex: 1 }}>
+                    <div style={{ textTransform: 'uppercase', letterSpacing: '2px', fontSize: '0.6rem', fontWeight: '800', color: 'rgba(255, 255, 255, 0.4)', marginBottom: '1px' }}>
+                        Live Satellite Connection
                     </div>
-                )}
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-                    <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00ff88', marginBottom: '0.3rem' }}>{distance}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>Distance (km)</div>
-                    </div>
-                    <div style={{ background: 'rgba(255, 255, 255, 0.05)', padding: '1rem', borderRadius: '12px', textAlign: 'center' }}>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '700', color: '#00ff88', marginBottom: '0.3rem' }}>{eta}</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>ETA (min)</div>
-                    </div>
+                    <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#fff', letterSpacing: '-0.5px' }}>
+                        {userRole === 'customer' ? 'Tracking Professional' : 'Navigating to Customer'}
+                    </h1>
                 </div>
 
-                {!myLat && (
-                    <button 
-                        onClick={getMyLocation}
-                        style={{ background: 'linear-gradient(135deg, #00d2ff, #a855f7)', color: '#fff', border: 'none', padding: '1rem', borderRadius: '12px', fontSize: '0.95rem', fontWeight: '600', cursor: 'pointer', width: '100%', marginTop: '1rem', transition: 'transform 0.2s' }}
-                    >
-                        <i className="fas fa-crosshairs" style={{ marginRight: '8px' }}></i> Share My Location Too
-                    </button>
-                )}
+                <div style={{ 
+                    padding: '0.5rem 1rem', borderRadius: '40px', 
+                    background: theirLat ? 'rgba(0, 210, 255, 0.1)' : 'rgba(255, 184, 0, 0.1)',
+                    border: `1px solid ${theirLat ? 'rgba(0, 210, 255, 0.3)' : 'rgba(255, 184, 0, 0.3)'}`,
+                    display: 'flex', alignItems: 'center', gap: '0.6rem',
+                    boxShadow: `0 0 20px ${theirLat ? 'rgba(0, 210, 255, 0.1)' : 'rgba(255, 184, 0, 0.1)'}`
+                }}>
+                    <span style={{ 
+                        width: '6px', height: '6px', borderRadius: '50%', 
+                        background: theirLat ? '#00d2ff' : '#ffb800',
+                        animation: 'radar-pulse 2s infinite' 
+                    }}></span>
+                    <span style={{ color: theirLat ? '#00d2ff' : '#ffb800', fontSize: '0.7rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        {statusText}
+                    </span>
+                </div>
             </div>
+
+            {/* --- MAP CONTAINER --- */}
+            <div ref={mapRef} style={{ width: '100%', height: '100%', zIndex: 1 }}></div>
+
+            {/* --- BOTTOM INFORMATION COCKPIT --- */}
+            <div style={{ 
+                position: 'absolute', bottom: '2rem', left: '2rem',
+                width: 'min(92%, 380px)', zIndex: 1000, 
+            }} className="hud-animate">
+                <div style={{ 
+                    background: 'rgba(10, 11, 18, 0.75)', backdropFilter: 'blur(24px) saturate(160%)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '24px',
+                    padding: '1.5rem', boxShadow: '0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1)'
+                }}>
+                    
+                    {/* Destination Address Panel */}
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#ffb800', fontSize: '0.65rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '0.6rem' }}>
+                            <i className="fas fa-location-arrow"></i> Target Destination
+                        </div>
+                        <div style={{ 
+                            fontSize: '0.95rem', fontWeight: '600', color: '#fff', 
+                            lineHeight: '1.4', transition: 'all 0.5s ease',
+                            opacity: addressName === 'Establishing contact...' ? 0.5 : 1
+                        }}>
+                            {addressName}
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ padding: '1rem', borderRadius: '18px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.8rem', fontWeight: '900', color: distance === '---' ? 'rgba(255,255,255,0.1)' : '#00d2ff', letterSpacing: '-1px', marginBottom: '2px' }}>
+                                {distance}
+                            </div>
+                            <div style={{ fontSize: '0.6rem', fontWeight: '800', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                                {distance === '---' ? 'Searching...' : 'Kilometers'}
+                            </div>
+                        </div>
+                        
+                        <div style={{ padding: '1rem', borderRadius: '18px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.05)', textAlign: 'center' }}>
+                            <div style={{ fontSize: '1.8rem', fontWeight: '900', color: eta === '---' ? 'rgba(255,255,255,0.1)' : '#ffb800', letterSpacing: '-1px', marginBottom: '2px' }}>
+                                {eta}
+                            </div>
+                            <div style={{ fontSize: '0.6rem', fontWeight: '800', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                                {eta === '---' ? 'Calculating...' : 'Minutes'}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Button for untracked state */}
+                    {!myLat && (
+                        <button onClick={getMyLocation} style={{ 
+                            fontWeight: '900', fontSize: '1rem', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.8rem',
+                            boxShadow: '0 10px 30px rgba(255, 255, 255, 0.2)',
+                            transition: 'all 0.3s ease'
+                        }} className="main-action-btn">
+                            <i className="fas fa-radar"></i> START LIVE TRACKING
+                        </button>
+                    )}
+                </div>
+            </div>
+
             <style dangerouslySetInnerHTML={{__html: `
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.3; }
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+
+                @keyframes radar-pulse {
+                    0% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.4); }
+                    70% { transform: scale(1.8); opacity: 0; box-shadow: 0 0 0 15px rgba(255, 184, 0, 0); }
+                    100% { transform: scale(1); opacity: 0; box-shadow: 0 0 0 0 rgba(255, 184, 0, 0); }
                 }
+
+                @keyframes sonar-wave {
+                    0% { transform: scale(0.8); opacity: 1; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                }
+
+                .leaflet-container { background: #050608 !important; }
+                .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.75) contrast(1.1); }
+                
+                .nav-back-btn:hover { background: rgba(255, 255, 255, 0.1) !important; transform: scale(1.05); }
+                .main-action-btn:hover { transform: translateY(-5px); box-shadow: 0 10px 40px rgba(255, 255, 255, 0.2); }
+
+                .leaflet-marker-icon { 
+                    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                }
+
+                .custom-div-icon { background: none !important; border: none !important; }
+                
+                /* Sonar Ring styling happens via JS in divIcon html */
             `}} />
         </div>
     );

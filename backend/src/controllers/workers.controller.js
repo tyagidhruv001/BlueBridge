@@ -87,6 +87,8 @@ exports.getWorkers = async (req, res) => {
                 experience_years: workerData.experience_years || 0,
                 base_price: workerData.base_price || 0,
                 bio: workerData.bio || userData.bio || '',
+                // Include real-time GPS location so map markers render correctly
+                location: workerData.location || userData.location || null,
                 ...workerData
             };
 

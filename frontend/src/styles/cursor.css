@@ -46,7 +46,8 @@
     height: 60px;
     top: -30px;
     left: -30px;
-    backdrop-filter: blur(0px); /* remove blur to pop */
+    backdrop-filter: blur(0px);
+    /* remove blur to pop */
 }
 
 /* Click Action Animation */

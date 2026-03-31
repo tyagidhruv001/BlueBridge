@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // CUSTOMER DASHBOARD - ENHANCED INTERACTIVITY
 // ============================================
 
@@ -234,6 +234,20 @@ async function bookWorkerEnhanced(workerId, workerName, serviceType = 'General')
         else showInteractiveNotification('Processing booking...', 'info');
 
         try {
+            const getGPSLocation = () => new Promise((resolve) => {
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+                        (error) => resolve(null),
+                        { enableHighAccuracy: true, timeout: 5000 }
+                    );
+                } else {
+                    resolve(null);
+                }
+            });
+            
+            const userGPS = await getGPSLocation();
+            
             const jobData = {
                 customerId: user.uid,
                 workerId: workerId || 'auto-assign',
@@ -241,7 +255,8 @@ async function bookWorkerEnhanced(workerId, workerName, serviceType = 'General')
                 status: 'pending',
                 price: 450, // Default price or fetched from worker profile
                 scheduledTime: new Date().toISOString(),
-                address: user.address || 'User Address'
+                address: user.address || 'User Address',
+                location: userGPS
             };
 
             const response = await API.jobs.create(jobData);
