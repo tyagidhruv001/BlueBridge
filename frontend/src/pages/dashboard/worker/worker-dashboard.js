@@ -250,18 +250,8 @@ async function initDashboard() {
     } catch (error) {
       console.warn('Redirecting to verification: Profile fetch failed or invalid.', error);
       // window.location.href = '/onboarding/worker-verification'; // Let's stay in dashboard and force profile
-      userProfile = { documentsVerified: false }; 
+      userProfile = { documentsVerified: false };
     }
-  }
-
-  // --- NAVIGATION GUARD: ENFORCE PROFILE COMPLETION ---
-  const isVerified = userProfile && userProfile.documentsVerified === true;
-  if (!isVerified) {
-    console.log('🛡️ [GUARD] Worker not verified. Routing to Profile.');
-    setTimeout(() => {
-      showToast('Please complete document verification to unlock dashboard', 'info');
-      loadPage('profile');
-    }, 100);
   }
 
   // Global exposure for Part 2
@@ -768,24 +758,14 @@ function loadDemoDataIfEmpty() {
     }
   ];
 
-  // Demo performance metrics
-  dashboardData.performance = {
-    rating: 4.7,
-    completedJobs: 28,
-    acceptanceRate: 92,
-    onTime: 96,
-    satisfaction: 94,
-    responseRate: 98,
-    repeatCustomers: 12
-  };
-
-  // Save to storage
-  Storage.set('worker_jobs', dashboardData.jobs);
-  Storage.set('worker_earnings', dashboardData.earnings);
+  // Demo reviews (already set)
   Storage.set('worker_reviews', dashboardData.reviews);
+
+  // Recalculate performance metrics dynamically using the same logic as real data
+  calculatePerformanceMetrics();
   Storage.set('worker_performance', dashboardData.performance);
 
-  console.log('Demo data loaded:', dashboardData);
+  console.log('Demo data loaded and performance metrics recalculated.');
 
   // Update UI if on home page
   if (document.getElementById('dashboardUserName')) {
@@ -794,8 +774,46 @@ function loadDemoDataIfEmpty() {
 }
 
 function calculatePerformanceMetrics() {
-  const { jobs, reviews } = dashboardData;
+  const { jobs, reviews, earnings } = dashboardData;
   const completedJobs = jobs.completed || [];
+  const now = new Date();
+  const oneWeekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+  // Initialize performance object if it doesn't exist
+  if (!dashboardData.performance) {
+    dashboardData.performance = {
+      satisfaction: 100,
+      onTime: 100,
+      repeatCustomers: 0,
+      jobsThisWeek: 0,
+      successRate: 100,
+      earnerStatus: 'Rising Star'
+    };
+  }
+
+  // 1. Jobs This Week
+  const jobsThisWeek = completedJobs.filter(j => {
+    const compDate = j.completedAt ? new Date(j.completedAt) : null;
+    return compDate && compDate >= oneWeekAgo;
+  }).length;
+  dashboardData.performance.jobsThisWeek = jobsThisWeek;
+
+  // 2. Success Rate
+  const totalHandled = (jobs.completed?.length || 0) + (jobs.active?.length || 0);
+  if (totalHandled > 0) {
+    dashboardData.performance.successRate = Math.round(((jobs.completed?.length || 0) / totalHandled) * 100);
+  }
+
+  // 3. Earner Status
+  if (earnings.total > 10000) dashboardData.performance.earnerStatus = 'Top Earner';
+  else if (earnings.total > 5000) dashboardData.performance.earnerStatus = 'Elite Pro';
+  else dashboardData.performance.earnerStatus = 'Verified Pro';
+
+  // 4. Satisfaction Rate
+  if (reviews.length > 0) {
+    const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 5), 0);
+    dashboardData.performance.satisfaction = Math.round((totalRating / (reviews.length * 5)) * 100);
+  }
 
   // 1. Satisfaction Rate
   if (reviews.length > 0) {
@@ -1091,17 +1109,12 @@ async function loadPage(pageName, params = null) {
 
   if (typeof showLoading === 'function') showLoading('Loading...');
 
-  // --- NAVIGATION GUARD: RE-CHECK VERIFICATION ---
+  // --- NAVIGATION GUARD: RE-CHECK VERIFICATION (REMOVED: Access Allowed Irrespective of Verification) ---
   const profile = Storage.get('BlueBridge_user_profile') || {};
-  const isVerified = profile.documentsVerified === true;
-  
-  if (!isVerified && pageName !== 'profile' && pageName !== 'home') {
-    // We allow 'home' for brief view or just stick to profile. 
-    // User requested "only after completing profile users can have access of their respective dash"
-    console.warn(`🛡️ [GUARD] Redirecting ${pageName} -> profile (Not Verified)`);
-    showToast('Verification Required: Please upload your documents first.', 'warning');
-    pageName = 'profile'; 
-  }
+  // const isVerified = profile.documentsVerified === true;
+  // if (!isVerified && pageName !== 'profile' && pageName !== 'home') {
+  //   showToast('Complete verification to enhance your visibility.', 'info');
+  // }
 
   try {
     // Small delay to ensure smooth transition
@@ -1469,9 +1482,9 @@ window.saveProfile = async function () {
 
     // --- RE-CHECK VERIFICATION STATUS ---
     if (profile.documentsVerified) {
-        showToast('Profile and Documents updated! Dashboard Unlocked.', 'success');
+      showToast('Profile and Documents updated! Dashboard Unlocked.', 'success');
     } else {
-        showToast('Profile updated. Complete verification to unlock features.', 'info');
+      showToast('Profile updated. Complete verification to unlock features.', 'info');
     }
 
     loadPage('profile');
@@ -1484,198 +1497,198 @@ window.saveProfile = async function () {
 
 // --- DOCUMENT VERIFICATION HELPERS ---
 window.triggerDocUpload = async function (type) {
-    const input = document.getElementById(`doc-upload-${type}`);
-    if (input) input.click();
+  const input = document.getElementById(`doc-upload-${type}`);
+  if (input) input.click();
 };
 
 window.handleDocUpload = async function (input, type) {
-    if (!input.files || !input.files[0]) return;
-    const file = input.files[0];
-    const user = Storage.get('BlueBridge_user');
-    if (!user || !user.uid) return;
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const user = Storage.get('BlueBridge_user');
+  if (!user || !user.uid) return;
 
-    try {
-        showLoading(`Uploading ${type.replace('-', ' ')}...`);
-        
-        // 1. Storage Reference
-        const storageRef = ref(storage, `worker_verifications/${user.uid}/${type}_${Date.now()}`);
-        
-        // 2. Upload
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
-        // 3. Update State (ONLY STORE THE URL, DO NOT VERIFY YET)
-        const profile = Storage.get('BlueBridge_user_profile') || {};
-        if (!profile.verifications) profile.verifications = {};
-        profile.verifications[type] = downloadURL;
-        
-        // Remove simulated auto-verification logic
-        // if (profile.verifications['id-proof']) {
-        //     profile.documentsVerified = true;
-        // }
+  try {
+    showLoading(`Uploading ${type.replace('-', ' ')}...`);
 
-        Storage.set('BlueBridge_user_profile', profile);
-        
-        // Update UI preview
-        const preview = document.getElementById(`preview-${type}`);
-        if (preview) {
-            preview.innerHTML = `<img src="${downloadURL}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
-        }
+    // 1. Storage Reference
+    const storageRef = ref(storage, `worker_verifications/${user.uid}/${type}_${Date.now()}`);
 
-        showToast(`${type.replace('-', ' ')} uploaded! Please click "Verify Document" to complete.`, 'info');
-        
-        // Refresh page to show the new "Verify" button
-        loadPage('profile');
-    } catch (err) {
-        console.error('Upload failed:', err);
-        showToast('Upload failed: ' + err.message, 'error');
-    } finally {
-        hideLoading();
+    // 2. Upload
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+
+    // 3. Update State (ONLY STORE THE URL, DO NOT VERIFY YET)
+    const profile = Storage.get('BlueBridge_user_profile') || {};
+    if (!profile.verifications) profile.verifications = {};
+    profile.verifications[type] = downloadURL;
+
+    // Remove simulated auto-verification logic
+    // if (profile.verifications['id-proof']) {
+    //     profile.documentsVerified = true;
+    // }
+
+    Storage.set('BlueBridge_user_profile', profile);
+
+    // Update UI preview
+    const preview = document.getElementById(`preview-${type}`);
+    if (preview) {
+      preview.innerHTML = `<img src="${downloadURL}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
     }
+
+    showToast(`${type.replace('-', ' ')} uploaded! Please click "Verify Document" to complete.`, 'info');
+
+    // Refresh page to show the new "Verify" button
+    loadPage('profile');
+  } catch (err) {
+    console.error('Upload failed:', err);
+    showToast('Upload failed: ' + err.message, 'error');
+  } finally {
+    hideLoading();
+  }
 };
 
 window.startPremiumScan = async function (imgUrl, currentName) {
-    console.log('[AI Scan Initializing]...', { imgUrl, currentName });
-    
-    // 1. Get HUD references
-    const scanLine = document.getElementById('hud-scan-line');
-    const logBox = document.getElementById('scan-status-log');
-    const verifyBtn = document.getElementById('verify-btn-trigger');
-    
-    if (verifyBtn) {
-        verifyBtn.disabled = true;
-        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> INITIALIZING...';
-        verifyBtn.style.opacity = '0.5';
+  console.log('[AI Scan Initializing]...', { imgUrl, currentName });
+
+  // 1. Get HUD references
+  const scanLine = document.getElementById('hud-scan-line');
+  const logBox = document.getElementById('scan-status-log');
+  const verifyBtn = document.getElementById('verify-btn-trigger');
+
+  if (verifyBtn) {
+    verifyBtn.disabled = true;
+    verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> INITIALIZING...';
+    verifyBtn.style.opacity = '0.5';
+  }
+
+  if (scanLine) scanLine.style.display = 'block';
+
+  const appendLog = (msg, color = 'rgba(0, 210, 255, 0.6)') => {
+    if (logBox) {
+      const div = document.createElement('div');
+      div.className = 'terminal-log';
+      div.style.color = color;
+      div.style.fontSize = '0.6rem';
+      div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+  };
+
+  appendLog('DETECTING_DOCUMENT_STRUCTURE...', '#00d2ff');
+  await new Promise(r => setTimeout(r, 1000));
+
+  const s1 = document.getElementById('status-1');
+  if (s1) {
+    s1.innerHTML = '<i class="fas fa-check"></i> UPLINK_SUCCESS';
+    s1.style.color = '#4ade80';
+    s1.style.opacity = '1';
+  }
+
+  appendLog('NEURAL_LINK_ESTABLISHED. ANALYZING_PIXELS...');
+  const s2 = document.getElementById('status-2');
+  if (s2) {
+    s2.style.opacity = '1';
+    s2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> NEURAL_ANALYSIS_IN_PROGRESS';
+  }
+
+  try {
+    // 2. REAL BACKEND CALL TO GEMINI
+    const data = await apiFetch('/verification/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        imageUrl: imgUrl,
+        documentType: 'id-proof',
+        userProvidedData: { name: currentName }
+      })
+    });
+
+    console.log('[AI Verification Result]:', data);
+
+    if (!data.success || !data.result.isValid) {
+      appendLog('AUTHENTICATION_FAILED: ' + (data.result?.rejectionReason || 'Invalid ID'), '#ef4444');
+      if (s2) {
+        s2.innerHTML = '<i class="fas fa-times"></i> ANALYSIS_REJECTED';
+        s2.style.color = '#ef4444';
+      }
+      throw new Error(data.result?.rejectionReason || data.error || 'AI could not verify this ID.');
     }
 
-    if (scanLine) scanLine.style.display = 'block';
-
-    const appendLog = (msg, color = 'rgba(0, 210, 255, 0.6)') => {
-        if (logBox) {
-            const div = document.createElement('div');
-            div.className = 'terminal-log';
-            div.style.color = color;
-            div.style.fontSize = '0.6rem';
-            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logBox.appendChild(div);
-            logBox.scrollTop = logBox.scrollHeight;
-        }
-    };
-
-    appendLog('DETECTING_DOCUMENT_STRUCTURE...', '#00d2ff');
-    await new Promise(r => setTimeout(r, 1000));
-    
-    const s1 = document.getElementById('status-1');
-    if (s1) {
-        s1.innerHTML = '<i class="fas fa-check"></i> UPLINK_SUCCESS';
-        s1.style.color = '#4ade80';
-        s1.style.opacity = '1';
-    }
-
-    appendLog('NEURAL_LINK_ESTABLISHED. ANALYZING_PIXELS...');
-    const s2 = document.getElementById('status-2');
+    // SUCCESS LOGIC
+    appendLog('AUTHENTICITY_CONFIRMED. TRUST_SCORE: 0.98', '#4ade80');
     if (s2) {
-        s2.style.opacity = '1';
-        s2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> NEURAL_ANALYSIS_IN_PROGRESS';
+      s2.innerHTML = '<i class="fas fa-check"></i> ANALYSIS_COMPLETE';
+      s2.style.color = '#4ade80';
     }
 
-    try {
-        // 2. REAL BACKEND CALL TO GEMINI
-        const data = await apiFetch('/verification/verify', {
-            method: 'POST',
-            body: JSON.stringify({
-                imageUrl: imgUrl,
-                documentType: 'id-proof',
-                userProvidedData: { name: currentName }
-            })
-        });
-
-        console.log('[AI Verification Result]:', data);
-
-        if (!data.success || !data.result.isValid) {
-            appendLog('AUTHENTICATION_FAILED: ' + (data.result?.rejectionReason || 'Invalid ID'), '#ef4444');
-            if (s2) {
-                s2.innerHTML = '<i class="fas fa-times"></i> ANALYSIS_REJECTED';
-                s2.style.color = '#ef4444';
-            }
-            throw new Error(data.result?.rejectionReason || data.error || 'AI could not verify this ID.');
-        }
-
-        // SUCCESS LOGIC
-        appendLog('AUTHENTICITY_CONFIRMED. TRUST_SCORE: 0.98', '#4ade80');
-        if (s2) {
-            s2.innerHTML = '<i class="fas fa-check"></i> ANALYSIS_COMPLETE';
-            s2.style.color = '#4ade80';
-        }
-        
-        const s3 = document.getElementById('status-3');
-        if (s3) {
-            s3.style.opacity = '1';
-            s3.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SYNCING_BIO_DATA...';
-        }
-
-        appendLog('EXTRACTING_KEY_INDICATORS...');
-        await new Promise(r => setTimeout(r, 1500));
-        
-        if (s3) {
-            s3.innerHTML = '<i class="fas fa-check"></i> DATA_SYNC_SUCCESS';
-            s3.style.color = '#4ade80';
-        }
-
-        const extractedName = data.result.extractedData.name || currentName;
-        const extractedLoc = data.result.extractedData.location || 'New Delhi, India';
-
-        appendLog(`DATA_EXTRACTED: [${extractedName}]`, '#4ade80');
-
-        // 3. Update Storage & Background Processing
-        const profile = Storage.get('BlueBridge_user_profile');
-        const user = Storage.get('BlueBridge_user');
-
-        if (profile) {
-            profile.name = extractedName;
-            profile.location = extractedLoc;
-            profile.documentsVerified = true;
-            Storage.set('BlueBridge_user_profile', profile);
-        }
-
-        if (user) {
-            user.name = extractedName;
-            Storage.set('BlueBridge_user', user);
-        }
-
-        showToast('Identity Verified Successfully!', 'success');
-        
-        // Final UI feedback before reload
-        appendLog('TERMINAL_SESSION_SECURED. RELOADING...', '#4ade80');
-        setTimeout(() => loadPage('profile'), 2000);
-
-    } catch (err) {
-        console.error('AI Verification failed:', err);
-        appendLog('CRITICAL_ERROR: ' + err.message, '#ef4444');
-        showToast('Verification Failed: ' + err.message, 'error');
-        
-        // Reset local state if verification fails
-        const profile = Storage.get('BlueBridge_user_profile');
-        if (profile) {
-            profile.documentsVerified = false;
-            Storage.set('BlueBridge_user_profile', profile);
-        }
-        
-        if (verifyBtn) {
-            verifyBtn.disabled = false;
-            verifyBtn.innerHTML = 'RETRY BIOMETRIC SCAN';
-            verifyBtn.style.opacity = '1';
-        }
-    } finally {
-        if (scanLine) {
-            setTimeout(() => scanLine.style.display = 'none', 1000);
-        }
+    const s3 = document.getElementById('status-3');
+    if (s3) {
+      s3.style.opacity = '1';
+      s3.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SYNCING_BIO_DATA...';
     }
+
+    appendLog('EXTRACTING_KEY_INDICATORS...');
+    await new Promise(r => setTimeout(r, 1500));
+
+    if (s3) {
+      s3.innerHTML = '<i class="fas fa-check"></i> DATA_SYNC_SUCCESS';
+      s3.style.color = '#4ade80';
+    }
+
+    const extractedName = data.result.extractedData.name || currentName;
+    const extractedLoc = data.result.extractedData.location || 'New Delhi, India';
+
+    appendLog(`DATA_EXTRACTED: [${extractedName}]`, '#4ade80');
+
+    // 3. Update Storage & Background Processing
+    const profile = Storage.get('BlueBridge_user_profile');
+    const user = Storage.get('BlueBridge_user');
+
+    if (profile) {
+      profile.name = extractedName;
+      profile.location = extractedLoc;
+      profile.documentsVerified = true;
+      Storage.set('BlueBridge_user_profile', profile);
+    }
+
+    if (user) {
+      user.name = extractedName;
+      Storage.set('BlueBridge_user', user);
+    }
+
+    showToast('Identity Verified Successfully!', 'success');
+
+    // Final UI feedback before reload
+    appendLog('TERMINAL_SESSION_SECURED. RELOADING...', '#4ade80');
+    setTimeout(() => loadPage('profile'), 2000);
+
+  } catch (err) {
+    console.error('AI Verification failed:', err);
+    appendLog('CRITICAL_ERROR: ' + err.message, '#ef4444');
+    showToast('Verification Failed: ' + err.message, 'error');
+
+    // Reset local state if verification fails
+    const profile = Storage.get('BlueBridge_user_profile');
+    if (profile) {
+      profile.documentsVerified = false;
+      Storage.set('BlueBridge_user_profile', profile);
+    }
+
+    if (verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = 'RETRY BIOMETRIC SCAN';
+      verifyBtn.style.opacity = '1';
+    }
+  } finally {
+    if (scanLine) {
+      setTimeout(() => scanLine.style.display = 'none', 1000);
+    }
+  }
 }
 
 
 function simulateAutoFill(currentName) {
-    // Deprecated in favor of startPremiumScan
+  // Deprecated in favor of startPremiumScan
 }
 
 function getProfilePage() {
@@ -1683,6 +1696,7 @@ function getProfilePage() {
   const user = Storage.get('BlueBridge_user') || {};
   const jobs = Storage.get('worker_jobs');
   const earnings = Storage.get('worker_earnings');
+  const performance = Storage.get('worker_performance') || {};
 
   return `
     <!-- PROFILE HEADER (Reconstructed) -->
@@ -1722,9 +1736,9 @@ function getProfilePage() {
             
             <!-- Details Row -->
             <div style="display:flex; align-items:center; gap: 1rem; flex-wrap: wrap;">
-                ${profile.documentsVerified ? 
-                  `<span class="badge badge-success" style="backdrop-filter: blur(4px); padding: 0.25rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.5px; border-radius: 20px;">Verified Pro</span>` : 
-                  `<span class="badge" style="background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 0.25rem 0.7rem; font-size: 0.75rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">Unverified</span>`}
+                ${profile.documentsVerified ?
+      `<span class="badge badge-success" style="backdrop-filter: blur(4px); padding: 0.25rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.5px; border-radius: 20px;">Verified Pro</span>` :
+      `<span class="badge" style="background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 0.25rem 0.7rem; font-size: 0.75rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">Unverified</span>`}
                 <span style="color: rgba(255,255,255,0.7); display:flex; align-items:center; gap:0.5rem; font-size: 1rem;">
                     <i class="fas fa-map-marker-alt" style="color: var(--neon-pink);"></i> ${profile.location || 'Location not set'}
                 </span>
@@ -1962,7 +1976,7 @@ function getProfilePage() {
                           <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">${(jobs && jobs.completed) ? jobs.completed.length : 0}</div>
                       </div>
                   </div>
-                  <div style="font-size: 0.8rem; color: var(--success);">+2 this week</div>
+                  <div style="font-size: 0.8rem; color: var(--success);">+${performance.jobsThisWeek || 0} this week</div>
               </div>
               
               <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
@@ -1973,20 +1987,45 @@ function getProfilePage() {
                           <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">&#8377;${earnings ? (earnings.total || 0) : 0}</div>
                       </div>
                   </div>
-                  <div style="font-size: 0.8rem; color: var(--success);">Top earner</div>
+                  <div style="font-size: 0.8rem; color: var(--success);">${performance.earnerStatus || 'Verified Pro'}</div>
               </div>
 
-               <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
+              <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
                   <div style="display: flex; align-items: center; gap: 1.5rem;">
                       <div style="font-size: 2rem;"><i class="fas fa-check-circle" style="color: #a78bfa;"></i></div>
                       <div style="text-align: left;">
                           <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px;">Success Rate</div>
-                          <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">100%</div>
+                          <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">${performance.successRate || 100}%</div>
                       </div>
                   </div>
-                  <div style="font-size: 0.8rem; color: var(--primary-400);">Excellent</div>
+                  <div style="font-size: 0.8rem; color: var(--primary-400);">${performance.successRate >= 95 ? 'Excellent' : 'Good'}</div>
               </div>
           </div>
+        </div>
+
+        <!-- Verified Credentials Section -->
+        ${profile.documentsVerified ? `
+        <div class="card" style="background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(10px); border: 1px solid rgba(74, 222, 128, 0.2); grid-column: 1 / -1; border-radius: 20px; margin-top: 1rem;">
+          <div class="card-header" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <h2 class="card-title" style="font-size: 1.5rem; color: #4ade80;"><i class="fas fa-shield-check" style="margin-right: 10px;"></i> Verified Credentials</h2>
+            <span class="badge badge-success" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.8rem;">OFFICIALLY VERIFIED</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; align-items: center;">
+            <div style="border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); background: #000; aspect-ratio: 3/2; display: flex; align-items: center; justify-content: center;">
+                <img src="${profile.verifications?.['id-proof'] || ''}" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Verified ID">
+            </div>
+            <div>
+                <p style="color: rgba(255,255,255,0.7); font-size: 0.95rem; line-height: 1.6;">
+                    Your identity has been successfully verified by our AI safety system. This document is now part of your professional profile and builds trust with potential customers.
+                </p>
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; font-size: 0.8rem; color: #4ade80;">
+                    <span><i class="fas fa-calendar-check"></i> Verified on: ${new Date().toLocaleDateString()}</span>
+                    <span><i class="fas fa-lock"></i> Secured by BlueBridge</span>
+                </div>
+            </div>
+          </div>
+        </div>
+        ` : ''}
         <style>
             @keyframes scanMove { 0% { top: 0; } 100% { top: 100%; } }
             @keyframes pulseGlow { 0% { opacity: 0.3; transform: scale(0.98); } 50% { opacity: 0.6; transform: scale(1.02); } 100% { opacity: 0.3; transform: scale(0.98); } }
@@ -2080,9 +2119,9 @@ function getProfilePage() {
                     <div id="preview-id-proof" class="id-viewport" style="width: 100%; height: 400px; background: rgba(0,0,0,0.6); border: 2px solid rgba(0, 210, 255, 0.1); border-radius: 24px; overflow: hidden; position: relative; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
                         <div id="hud-scan-line" class="hud-scanner-bar"></div>
                         
-                        ${profile.verifications?.['id-proof'] ? 
-                          `<img src="${profile.verifications['id-proof']}" style="width:100%; height:100%; object-fit:contain; filter: contrast(1.1) brightness(1.1) ${profile.documentsVerified ? '' : 'grayscale(0.3)'}; transition: all 0.5s ease;">` : 
-                          `<div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(0, 210, 255, 0.15); padding: 2rem; text-align: center;">
+                        ${profile.verifications?.['id-proof'] ?
+      `<img src="${profile.verifications['id-proof']}" style="width:100%; height:100%; object-fit:contain; filter: contrast(1.1) brightness(1.1) ${profile.documentsVerified ? '' : 'grayscale(0.3)'}; transition: all 0.5s ease;">` :
+      `<div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(0, 210, 255, 0.15); padding: 2rem; text-align: center;">
                               <i class="fas fa-id-card-clip" style="font-size: 5rem; margin-bottom: 1.5rem;"></i>
                               <div class="terminal-log">AWAITING_PHYSICAL_UPLINK...</div>
                            </div>`}
@@ -2107,7 +2146,7 @@ function getProfilePage() {
 
                         <div style="margin-top: auto; display: flex; flex-direction: column; gap: 0.8rem;">
                             ${profile.verifications?.['id-proof'] ? (
-                                profile.documentsVerified ? `
+      profile.documentsVerified ? `
                                     <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3); color: #4ade80; padding: 1rem; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-align: center; letter-spacing: 1px;">
                                         VERIFIED_SECURE
                                     </div>
@@ -2118,7 +2157,7 @@ function getProfilePage() {
                                     </button>
                                     <button class="btn" onclick="triggerDocUpload('id-proof')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); padding: 0.7rem; border-radius: 12px; font-size: 0.65rem; text-transform: uppercase;">Retry Upload</button>
                                 `
-                            ) : `
+    ) : `
                                 <button class="btn" onclick="triggerDocUpload('id-proof')" style="background: linear-gradient(135deg, #4f46e5, #ec4899); border: none; color: #fff; padding: 1.2rem; border-radius: 16px; font-weight: 900; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; box-shadow: 0 10px 20px rgba(236, 72, 153, 0.15); cursor: pointer;">
                                     UPLINK ID
                                 </button>
@@ -2646,38 +2685,34 @@ function renderJobHistoryList(jobs, container) {
 
 
 // --- GLOBAL LOGOUT HANDLER (Failsafe) ---
-window.performLogout = function (e) {
+window.performLogout = async function (e) {
   if (e) {
     e.preventDefault();
     e.stopPropagation();
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
   }
 
-  console.log('[WORKER LOGOUT] performLogout triggered');
-  const msg = 'Are you sure you want to sign out?';
-  const confirmFn = (typeof showConfirm === 'function') ? showConfirm : (m, cb) => { if (confirm(m)) cb(); };
+  console.log('[WORKER LOGOUT] Immediate sign out triggered');
+  showToast('Signing out...', 'info');
 
-  confirmFn(msg, async () => {
-    console.log('[WORKER LOGOUT] Process started...');
-    try {
-      if (auth && typeof auth.signOut === 'function') {
-        await auth.signOut();
-      }
-    } catch (err) {
-      console.warn('[WORKER LOGOUT] Firebase error:', err);
+  try {
+    if (auth && typeof auth.signOut === 'function') {
+      await auth.signOut();
     }
+  } catch (err) {
+    console.warn('[WORKER LOGOUT] Firebase error:', err);
+  }
 
-    try {
-      if (typeof Storage !== 'undefined' && Storage.clear) Storage.clear();
-      localStorage.clear();
-      sessionStorage.clear();
-      console.log('[WORKER LOGOUT] Redirecting...');
-      window.location.href = '/';
-    } catch (err) {
-      console.error('[WORKER LOGOUT] Cleanup error:', err);
-      window.location.href = '/';
-    }
-  });
+  try {
+    if (typeof Storage !== 'undefined' && Storage.clear) Storage.clear();
+    localStorage.clear();
+    sessionStorage.clear();
+    console.log('[WORKER LOGOUT] Redirecting...');
+    window.location.href = '/';
+  } catch (err) {
+    console.error('[WORKER LOGOUT] Cleanup error:', err);
+    window.location.href = '/';
+  }
 };
 
 document.addEventListener('click', (e) => {
