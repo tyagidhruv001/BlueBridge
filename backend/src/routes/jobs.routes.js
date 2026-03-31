@@ -75,29 +75,22 @@ router.get('/', async (req, res) => {
         }
 
         const snapshot = await query.get();
-        const jobs = [];
-
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            const job = { id: doc.id, ...data };
+        const jobs = await Promise.all(snapshot.docs.map(async (doc) => {
+            const job = { id: doc.id, ...doc.data() };
 
             // Join with worker data for phone number if needed
             if (job.workerId && job.workerId !== 'auto-assign') {
                 try {
                     const workerUserDoc = await db.collection('users').doc(job.workerId).get();
                     if (workerUserDoc.exists) {
-                        const workerUserData = workerUserDoc.data();
-                        job.workerPhone = workerUserData.phone || '';
-                        // workerId is already there but we ensure consistency
-                        job.workerId = job.workerId;
+                        job.workerPhone = workerUserDoc.data().phone || '';
                     }
                 } catch (e) {
                     console.error(`Error fetching worker info for job ${job.id}:`, e);
                 }
             }
-
-            jobs.push(job);
-        }
+            return job;
+        }));
 
         console.log(`Jobs API: type=${type}, role=${role}, userId=${userId}, returned ${jobs.length} jobs`);
         res.json(jobs);
