@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // WORKER DASHBOARD - COMPLETE IMPLEMENTATION
 // ============================================
 
@@ -391,26 +391,45 @@ async function initDashboard() {
 // ============================================
 
 let jobsUnsubscribe = null;
+let pendingUnsubscribe = null;
 
-function subscribeToWorkerJobs(uid) {
+function subscribeToDirectWorkerJobs(uid) {
   if (jobsUnsubscribe) jobsUnsubscribe();
 
+  // 1. Direct Assignments (Real-time)
   const q = query(collection(db, 'jobs'), where('workerId', '==', uid));
-
-  console.log('Worker subscribing to jobs:', uid);
+  
+  console.log('ðŸ“¡ [WORKER SYNC] Subscribing to direct assignments:', uid);
   jobsUnsubscribe = onSnapshot(q, (snapshot) => {
-    const allJobs = [];
-    snapshot.forEach(doc => {
-      allJobs.push({ id: doc.id, ...doc.data() });
-    });
+    const directJobs = [];
+    snapshot.forEach(doc => directJobs.push({ id: doc.id, ...doc.data() }));
+    
+    // Update active/completed from direct jobs
+    const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
+    dashboardData.jobs.active = directJobs.filter(j => activeStatuses.includes((j.status || '').toLowerCase()));
+    dashboardData.jobs.completed = directJobs.filter(j => (j.status || '').toLowerCase() === 'completed');
+    
+    syncAndRefreshUI();
+  }, error => console.error('Direct jobs listener error:', error));
+}
 
-    // Update Local State
-    dashboardData.jobs.pending = allJobs.filter(j => j.status === 'pending');
-    dashboardData.jobs.active = allJobs.filter(j => j.status === 'assigned' || j.status === 'in_progress');
-    dashboardData.jobs.completed = allJobs.filter(j => j.status === 'completed');
+function subscribeToPendingJobPool() {
+  if (pendingUnsubscribe) pendingUnsubscribe();
 
-    console.log('Real-time worker jobs update:', allJobs.length);
+  // 2. Global Pending Pool (Real-time)
+  const qPending = query(collection(db, 'jobs'), where('status', '==', 'pending'));
+  
+  console.log('ðŸ“¡ [WORKER SYNC] Subscribing to pending job pool...');
+  pendingUnsubscribe = onSnapshot(qPending, (snapshot) => {
+    const pendingJobs = [];
+    snapshot.forEach(doc => pendingJobs.push({ id: doc.id, ...doc.data() }));
+    
+    dashboardData.jobs.pending = pendingJobs;
+    syncAndRefreshUI();
+  }, error => console.error('Pending pool listener error:', error));
+}
 
+function syncAndRefreshUI() {
     // Update UI Badges
     const requestBadge = document.getElementById('requestCount');
     if (requestBadge) requestBadge.textContent = dashboardData.jobs.pending.length;
@@ -421,17 +440,22 @@ function subscribeToWorkerJobs(uid) {
     const activeJobsStat = document.getElementById('activeJobs');
     if (activeJobsStat) activeJobsStat.textContent = dashboardData.jobs.active.length;
 
-    // Refresh Current View if applicable
-    // Check both potential container IDs (Home vs dedicated pages)
+    // Refresh Current View
     const requestList = document.getElementById('jobRequestsList');
     if (requestList) fetchAndRenderJobRequests();
 
     const activeList = document.getElementById('activeJobsList');
     if (activeList) fetchAndRenderActiveJobs();
 
-  }, error => {
-    console.error('Worker jobs listener error:', error);
-  });
+    // Re-render performance chart with all combined data
+    if (typeof window.updatePerformanceChart === 'function') {
+        window.updatePerformanceChart('week');
+    }
+}
+
+function subscribeToWorkerJobs(uid) {
+    subscribeToDirectWorkerJobs(uid);
+    subscribeToPendingJobPool();
 }
 
 // Transform bookings to job format for compatibility
@@ -2315,7 +2339,7 @@ async function initGlobalBookingSync() {
         const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
         
         // Initial fetch to get active jobs
-        const res = await fetch(`${apiBase}/jobs/active?workerId=${user.uid}`);
+        const res = await fetch(`${apiBase}/bookings?user_id=${user.uid}&role=worker`);
         const jobs = await res.json();
         
         const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
@@ -2378,8 +2402,11 @@ async function initActiveMissionMap(bookingId) {
     getDoc(doc(db, 'locations', bookingId)).then(docSnap => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            if (data.customer?.latitude) {
-                const pos = [data.customer.latitude, data.customer.longitude];
+            const loc0 = data.customerLocation || data.customer;
+            const lat0 = loc0?.lat ?? loc0?.latitude;
+            const lng0 = loc0?.lng ?? loc0?.longitude;
+            if (lat0 && lng0) {
+                const pos = [lat0, lng0];
                 customerMarker.setLatLng(pos);
                 map.setView(pos, 15);
                 document.getElementById(`customer-status-${bookingId}`).innerHTML = 
@@ -2391,9 +2418,11 @@ async function initActiveMissionMap(bookingId) {
     onSnapshot(doc(db, 'locations', bookingId), (docSnap) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
-            const customerLoc = data.customer;
-            if (customerLoc && customerLoc.latitude) {
-                const newPos = [customerLoc.latitude, customerLoc.longitude];
+            const loc2 = data.customerLocation || data.customer;
+            const lat2 = loc2?.lat ?? loc2?.latitude;
+            const lng2 = loc2?.lng ?? loc2?.longitude;
+            if (lat2 && lng2) {
+                const newPos = [lat2, lng2];
                 customerMarker.setLatLng(newPos);
                 map.panTo(newPos);
                 document.getElementById(`customer-status-${bookingId}`).innerHTML = 

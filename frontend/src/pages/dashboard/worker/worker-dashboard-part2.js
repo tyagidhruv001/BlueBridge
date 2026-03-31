@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // WORKER DASHBOARD - PART 2
 // Additional Pages and Functionality
 // ============================================
@@ -572,7 +572,7 @@ function updateEarningsChart(range) {
   console.log('Update earnings chart for:', range);
 }
 
-function updatePerformanceChart(range) {
+window.updatePerformanceChart = function(range) {
   const canvas = document.getElementById('performanceChart');
   if (!canvas) return;
 
@@ -600,15 +600,25 @@ function updatePerformanceChart(range) {
 
   const now = new Date();
   const startOfWeek = new Date(now);
-  // roll back to Monday
-  startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  // Roll back to the most recent Monday
+  const dayOfWeek = now.getDay(); // Sun=0, Mon=1...
+  const diffToMon = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  startOfWeek.setDate(now.getDate() - diffToMon);
   startOfWeek.setHours(0, 0, 0, 0);
 
   allJobs.forEach(job => {
-    const d = new Date(job.created_at || job.createdAt || job.date || null);
-    if (isNaN(d)) return;
-    const diff = Math.floor((d - startOfWeek) / 864e5); // days since Monday
-    if (diff >= 0 && diff < 7) dayCounts[diff]++;
+    // Check all possible date fields from Firestore
+    const dStr = job.createdAt || job.created_at || job.updated_at || job.timestamp || job.date;
+    if (!dStr) return;
+    
+    const d = new Date(dStr);
+    if (isNaN(d.getTime())) return;
+    
+    // Calculate days since this week's Monday
+    const diffDays = Math.floor((d.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays < 7) {
+      dayCounts[diffDays]++;
+    }
   });
 
   const maxVal = Math.max(...dayCounts, 1);

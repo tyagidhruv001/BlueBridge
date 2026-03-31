@@ -129,10 +129,23 @@ function subscribeToBookings(uid) {
 function manageBackgroundGPSTracking(bookings) {
     if (!navigator.geolocation) return;
 
-    // Filter to strictly physical "in-progress" type live jobs where tracking matters
-    const liveJobs = (bookings || []).filter(b => ['assigned', 'accepted', 'in_progress', 'running', 'on the way', 'active'].includes((b.status || '').toLowerCase()));
+    const activeStatuses = ['assigned', 'accepted', 'in_progress', 'running', 'on the way', 'active'];
+    const liveJobs = (bookings || []).filter(b => activeStatuses.includes((b.status || '').toLowerCase()));
 
-    // If tracking is already running, skip
+    // Always update the shared live job list so the GPS watcher uses fresh data
+    window._customerLiveJobs = liveJobs;
+
+    if (liveJobs.length === 0) {
+        // No active jobs - stop tracking to save battery
+        if (window.customerGPSWatchId) {
+            navigator.geolocation.clearWatch(window.customerGPSWatchId);
+            window.customerGPSWatchId = null;
+            console.log('🔴 GPS tracking stopped - no active jobs.');
+        }
+        return;
+    }
+
+    // If tracking is already running, the watcher closure reads window._customerLiveJobs dynamically
     if (window.customerGPSWatchId) return;
 
     console.log('🟢 Background GPS presence tracking started.');
@@ -150,8 +163,8 @@ function manageBackgroundGPSTracking(bookings) {
                 }).catch(() => {});
             }
 
-            // 2. Job-specific pings
-            liveJobs.forEach(job => {
+            // 2. Job-specific pings (use dynamic list from window._customerLiveJobs)
+            (window._customerLiveJobs || []).forEach(job => {
                 // Feature A: Push location to tracking API for 'Track.jsx' component compatibility
                 fetch(`${apiBase}/location/${job.id}`, {
                     method: 'PUT',
@@ -2006,7 +2019,7 @@ async function initGlobalBookingSync() {
         const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
         
         // Initial fetch to get active bookings
-        const res = await fetch(`${apiBase}/bookings?userId=${user.uid}`);
+        const res = await fetch(`${apiBase}/bookings?user_id=${user.uid}&role=customer`);
         const bookings = await res.json();
         
         const activeStatuses = ['active', 'assigned', 'in_progress', 'scheduled', 'accepted', 'running', 'on the way'];
