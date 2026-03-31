@@ -2,12 +2,12 @@ import { db, collection, addDoc, query, where, orderBy, getDocs } from '../utils
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
-// If deployed on Cloudflare, replace VERCEL_BACKEND_URL with your Vercel deployment URL
-const VERCEL_BACKEND_URL = 'https://deploy001-cyan.vercel.app';
+// In production, set VITE_BACKEND_URL in your Cloudflare/Vercel dashboard
+const PROD_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://deploy001-cyan.vercel.app';
 
 export const API_BASE = isLocal
     ? "http://localhost:5000/api"
-    : (VERCEL_BACKEND_URL ? VERCEL_BACKEND_URL + "/api" : "/api");
+    : (PROD_BACKEND_URL ? (PROD_BACKEND_URL.endsWith('/') ? PROD_BACKEND_URL : PROD_BACKEND_URL) + "/api" : "/api");
 
 export async function apiFetch(path, options = {}) {
     const controller = new AbortController();

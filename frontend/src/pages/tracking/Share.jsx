@@ -52,23 +52,18 @@ const ShareLocation = () => {
     }, []);
 
     const fetchAddress = async (lat, lng) => {
-        if (!PositionStackKey) {
-            setAddressName(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)} (No API Key)`);
-            return;
-        }
-        
         try {
-            const url = `http://api.positionstack.com/v1/reverse?access_key=${PositionStackKey}&query=${lat},${lng}&limit=1`;
-            const req = await fetch(url);
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+            const req = await fetch(url, { headers: { 'User-Agent': 'BlueBridge-App' } });
             const res = await req.json();
-            if (res.data && res.data.length > 0) {
-                setAddressName(res.data[0].label || res.data[0].name || "Address found");
+            if (res.display_name) {
+                setAddressName(res.display_name);
             } else {
-                setAddressName("Unknown location");
+                setAddressName(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
             }
         } catch (e) {
             console.error("Geocoding failed", e);
-            setAddressName("Location mapped");
+            setAddressName(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`);
         }
     };
 

@@ -1,4 +1,4 @@
-﻿// Global utility functions for BlueBridge
+// Global utility functions for BlueBridge
 
 // Local Storage helpers (Now using sessionStorage for tab isolation with localStorage fallback)
 const Storage = {
@@ -245,41 +245,46 @@ function showToast(message, type = 'info') {
 
 // Confirm dialog
 function showConfirm(message, onConfirm, onCancel) {
-    const modal = document.createElement('div');
-    modal.innerHTML = `
-    <div class="modal-overlay">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>Confirm</h3>
+    return new Promise((resolve) => {
+        const modal = document.createElement('div');
+        modal.innerHTML = `
+        <div class="modal-overlay" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 100000; animation: fadeIn 0.3s ease-out;">
+          <div class="modal" style="background: var(--bg-elevated); padding: 2rem; border-radius: var(--radius-xl); border: 1px solid var(--glass-border); max-width: 400px; width: 90%; text-align: center;">
+            <div class="modal-header" style="margin-bottom: 1.5rem;">
+              <h3 style="color: #fff; margin: 0;">Confirm</h3>
+            </div>
+            <div class="modal-body" style="margin-bottom: 2rem;">
+              <p style="color: var(--text-secondary); line-height: 1.6;">${message}</p>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 1rem; justify-content: center;">
+              <button class="btn btn-ghost" id="cancelBtn" style="flex: 1; padding: 0.75rem; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.05); color: #fff; border: 1px solid rgba(255,255,255,0.1);">Cancel</button>
+              <button class="btn btn-primary" id="confirmBtn" style="flex: 1; padding: 0.75rem; border-radius: 8px; cursor: pointer; background: var(--neon-blue); color: #000; border: none; font-weight: 700;">Confirm</button>
+            </div>
+          </div>
         </div>
-        <div class="modal-body">
-          <p>${message}</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-ghost" id="cancelBtn">Cancel</button>
-          <button class="btn btn-primary" id="confirmBtn">Confirm</button>
-        </div>
-      </div>
-    </div>
-  `;
+      `;
 
-    document.body.appendChild(modal);
+        document.body.appendChild(modal);
 
-    modal.querySelector('#confirmBtn').addEventListener('click', () => {
-        modal.remove();
-        if (onConfirm) onConfirm();
-    });
-
-    modal.querySelector('#cancelBtn').addEventListener('click', () => {
-        modal.remove();
-        if (onCancel) onCancel();
-    });
-
-    modal.querySelector('.modal-overlay').addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal-overlay')) {
+        const closeModal = (result) => {
             modal.remove();
-            if (onCancel) onCancel();
-        }
+            if (result) {
+                if (onConfirm) onConfirm();
+                resolve(true);
+            } else {
+                if (onCancel) onCancel();
+                resolve(false);
+            }
+        };
+
+        modal.querySelector('#confirmBtn').addEventListener('click', () => closeModal(true));
+        modal.querySelector('#cancelBtn').addEventListener('click', () => closeModal(false));
+
+        modal.querySelector('.modal-overlay').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeModal(false);
+            }
+        });
     });
 }
 

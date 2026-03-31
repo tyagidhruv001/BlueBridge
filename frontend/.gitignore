@@ -7,7 +7,6 @@ node_modules/
 .env.*.local
 
 # Configuration
-config.js
 
 # OS Files
 .DS_Store

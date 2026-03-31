@@ -203,25 +203,37 @@ function manageBackgroundGPSTracking(bookings) {
 function setupDashboardActions() {
     window.openTracking = function(bookingId) {
         showToast('Switching to maps for worker tracking...', 'info');
-        // Switch to the Nearby Workers tab
         const nearbyTab = document.querySelector('[data-tab="nearby-workers"]');
         if (nearbyTab) {
             nearbyTab.click();
-            // In a real app, we would scroll to the worker or focus the map
+            // Focus on the worker assigned to this booking
+            const bookings = Storage.get(STORAGE_KEYS.BOOKINGS) || [];
+            const active = bookings.find(b => b.id === bookingId);
+            if (active && active.workerId && active.workerId !== 'auto-assign') {
+                setTimeout(() => {
+                    if (window.focusOnWorker) window.focusOnWorker(active.workerId);
+                }, 500);
+            }
         }
     };
 
     window.cancelBooking = async function(bookingId) {
-        const confirmed = await showConfirm('Are you sure you want to cancel this booking?');
-        if (!confirmed) return;
+        // Remove confirmation dialog as per user request for immediate action
+        showToast('Processing cancellation...', 'info');
 
         try {
-            await API.jobs.cancel(bookingId);
-            showToast('Booking cancelled successfully', 'success');
-            // Data will refresh automatically via listener
+            console.log('[DASHBOARD] Cancelling booking:', bookingId);
+            const result = await API.jobs.cancel(bookingId);
+            
+            if (result && result.success) {
+                showToast('Booking cancelled successfully', 'success');
+                // The onSnapshot listener will handle the UI update dynamically
+            } else {
+                throw new Error(result?.error || 'Failed to cancel booking');
+            }
         } catch (e) {
             console.error('Failed to cancel:', e);
-            showToast('Failed to cancel booking: ' + e.message, 'error');
+            showToast('Failed to cancel: ' + e.message, 'error');
         }
     };
 }
@@ -1046,7 +1058,7 @@ function renderOverview() {
                         
                         <div style="display: flex; gap: 0.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
                             <button class="btn btn-primary btn-sm" style="flex:1; background: var(--neon-green); color: #000; font-size:0.8rem; padding:0.5rem;" title="Call Professional" onclick="window.open('tel:${activeBooking.workerPhone || ''}')"><i class="fas fa-phone-alt"></i></button>
-                            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem;" title="Chat with Professional" onclick="window.location.href='/chat/chat?bookingId=${activeBooking.id}&receiverName=${encodeURIComponent(activeBooking.worker || activeBooking.workerName || 'Worker')}&receiverId=${activeBooking.workerId || ''}'"><i class="fas fa-comment-dots"></i></button>
+                            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem;" title="Chat with Professional" onclick="window.location.href='../../chat/chat.html?bookingId=${activeBooking.id}&receiverName=${encodeURIComponent(activeBooking.worker || activeBooking.workerName || 'Worker')}&receiverId=${activeBooking.workerId || ''}'"><i class="fas fa-comment-dots"></i></button>
                             <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem; color: var(--neon-blue); border-color: var(--neon-blue);" title="Track Worker" onclick="window.openTracking('${activeBooking.id}')"><i class="fas fa-map-marker-alt"></i></button>
                             <button class="btn btn-ghost btn-sm" style="flex:1; color: var(--neon-pink); font-size:0.8rem; padding:0.5rem; border: 1px solid var(--neon-pink);" title="Cancel Booking" onclick="window.cancelBooking('${activeBooking.id}')"><i class="fas fa-times"></i></button>
                         </div>
@@ -1191,8 +1203,8 @@ async function renderBookingsGrid(filterType = 'all') {
             const timeVal = b.time || 'TBD';
             const priceVal = b.price || 350;
 
-            const chatAction = isCancelled ? 'onclick="alert(\'Cannot chat on cancelled bookings.\')"' : `onclick="window.location.href='/chat/chat?bookingId=${b.id}&receiverName=${encodeURIComponent(workerName)}&receiverId=${b.workerId || ''}'"`;
-            const callAction = isCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : 'onclick="alert(\'Calling professional...\')"';
+            const chatAction = isCancelled ? 'onclick="alert(\'Cannot chat on cancelled bookings.\')"' : `onclick="window.location.href='../../chat/chat.html?bookingId=${b.id}&receiverName=${encodeURIComponent(workerName)}&receiverId=${b.workerId || ''}'"`;
+            const callAction = isCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : `onclick="window.open('tel:${b.workerPhone || ''}')"`;
 
             const trackStyle = isLive
                 ? 'background: var(--neon-blue); color: #fff; border:none; box-shadow: 0 0 10px rgba(0, 210, 255, 0.4); cursor: pointer;'
@@ -2593,57 +2605,33 @@ window.handleCalendarDateClick = handleCalendarDateClick;
 // --- GLOBAL LOGOUT HANDLER (Failsafe) ---
 let isLogoutConfirmOpen = false;
 
-window.performLogout = function (e) {
-    if (isLogoutConfirmOpen) return;
-
+window.performLogout = async function (e) {
     if (e) {
         e.preventDefault?.();
         e.stopPropagation?.();
         e.stopImmediatePropagation?.();
     }
 
-    console.log('[LOGOUT] performLogout triggered');
+    console.log('[LOGOUT] Immediate sign out triggered');
+    showToast('Signing out...', 'info');
 
-    const msg = 'Are you sure you want to sign out?';
-
-    // ❌ remove fallback to native confirm
-    if (typeof showConfirm !== 'function') {
-        console.error('showConfirm is not defined');
-        return;
+    try {
+        if (auth && typeof auth.signOut === 'function') {
+            await auth.signOut();
+        }
+    } catch (err) {
+        console.warn('[LOGOUT] Firebase signOut error:', err);
     }
 
-    isLogoutConfirmOpen = true;
-
-    showConfirm(
-        msg,
-        async () => {
-            console.log('[LOGOUT] User confirmed. Cleaning up...');
-
-            try {
-                if (auth && typeof auth.signOut === 'function') {
-                    await auth.signOut();
-                }
-            } catch (err) {
-                console.warn('[LOGOUT] Firebase signOut error:', err);
-            }
-
-            try {
-                localStorage.clear();
-                sessionStorage.clear();
-                console.log('[LOGOUT] Redirecting to home...');
-                window.location.href = '/';
-            } catch (err) {
-                console.error('[LOGOUT] Cleanup error, forcing redirect:', err);
-                window.location.href = '/';
-            } finally {
-                isLogoutConfirmOpen = false;
-            }
-        },
-        () => {
-            console.log('[LOGOUT] User cancelled');
-            isLogoutConfirmOpen = false;
-        }
-    );
+    try {
+        localStorage.clear();
+        sessionStorage.clear();
+        console.log('[LOGOUT] Redirecting to home...');
+        window.location.href = '/';
+    } catch (err) {
+        console.error('[LOGOUT] Cleanup error, forcing redirect:', err);
+        window.location.href = '/';
+    }
 };
 
 // delegation removed to avoid double-triggers with onclick attribute
