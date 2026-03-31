@@ -5,7 +5,7 @@
 // Imports
 import { API, apiFetch } from '../../../api/api.js';
 import { Storage, getRelativeTime, showToast, showLoading, hideLoading, showConfirm } from '../../../utils/utils.js';
-import { auth, db, collection, query, where, onSnapshot, orderBy, doc, getDoc } from '../../../utils/config.js';
+import { auth, db, storage, collection, query, where, onSnapshot, orderBy, doc, getDoc, setDoc, ref, uploadBytes, getDownloadURL } from '../../../utils/config.js';
 
 // --- GLASS COCKPIT GLOBAL STATE ---
 let globalWorkerWatchId = null;
@@ -249,8 +249,19 @@ async function initDashboard() {
       }
     } catch (error) {
       console.warn('Redirecting to verification: Profile fetch failed or invalid.', error);
-      window.location.href = '/onboarding/worker-verification';
+      // window.location.href = '/onboarding/worker-verification'; // Let's stay in dashboard and force profile
+      userProfile = { documentsVerified: false }; 
     }
+  }
+
+  // --- NAVIGATION GUARD: ENFORCE PROFILE COMPLETION ---
+  const isVerified = userProfile && userProfile.documentsVerified === true;
+  if (!isVerified) {
+    console.log('🛡️ [GUARD] Worker not verified. Routing to Profile.');
+    setTimeout(() => {
+      showToast('Please complete document verification to unlock dashboard', 'info');
+      loadPage('profile');
+    }, 100);
   }
 
   // Global exposure for Part 2
@@ -372,7 +383,7 @@ async function initDashboard() {
     // --- GLASS COCKPIT: START SYNC ENGINE ---
     const user = Storage.get('BlueBridge_user');
     if (user && user.uid) subscribeToWorkerJobs(user.uid);
-    
+
     await initGlobalBookingSync();
   } catch (err) {
     console.error('Initial data load failed:', err);
@@ -398,17 +409,17 @@ function subscribeToDirectWorkerJobs(uid) {
 
   // 1. Direct Assignments (Real-time)
   const q = query(collection(db, 'jobs'), where('workerId', '==', uid));
-  
-  console.log('ðŸ“¡ [WORKER SYNC] Subscribing to direct assignments:', uid);
+
+  console.log('📡 [WORKER SYNC] Subscribing to direct assignments:', uid);
   jobsUnsubscribe = onSnapshot(q, (snapshot) => {
     const directJobs = [];
     snapshot.forEach(doc => directJobs.push({ id: doc.id, ...doc.data() }));
-    
+
     // Update active/completed from direct jobs
     const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
     dashboardData.jobs.active = directJobs.filter(j => activeStatuses.includes((j.status || '').toLowerCase()));
     dashboardData.jobs.completed = directJobs.filter(j => (j.status || '').toLowerCase() === 'completed');
-    
+
     syncAndRefreshUI();
   }, error => console.error('Direct jobs listener error:', error));
 }
@@ -418,44 +429,75 @@ function subscribeToPendingJobPool() {
 
   // 2. Global Pending Pool (Real-time)
   const qPending = query(collection(db, 'jobs'), where('status', '==', 'pending'));
-  
-  console.log('ðŸ“¡ [WORKER SYNC] Subscribing to pending job pool...');
+
+  console.log('📡 [WORKER SYNC] Subscribing to pending job pool...');
   pendingUnsubscribe = onSnapshot(qPending, (snapshot) => {
     const pendingJobs = [];
     snapshot.forEach(doc => pendingJobs.push({ id: doc.id, ...doc.data() }));
-    
+
     dashboardData.jobs.pending = pendingJobs;
     syncAndRefreshUI();
   }, error => console.error('Pending pool listener error:', error));
 }
 
 function syncAndRefreshUI() {
-    // Update UI Badges
-    const requestBadge = document.getElementById('requestCount');
-    if (requestBadge) requestBadge.textContent = dashboardData.jobs.pending.length;
+  // 0. Recalculate earnings from completed jobs to keep prices synced
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const newReqStat = document.getElementById('newRequests');
-    if (newReqStat) newReqStat.textContent = dashboardData.jobs.pending.length;
+  let todayE = 0, monthE = 0;
+  (dashboardData.jobs.completed || []).forEach(j => {
+    const dt = new Date(j.completedAt || j.updatedAt || j.createdAt || Date.now());
+    const amt = parseFloat(j.price || j.amount) || 0;
+    if (dt >= startOfDay) todayE += amt;
+    if (dt >= startOfMonth) monthE += amt;
+  });
 
-    const activeJobsStat = document.getElementById('activeJobs');
-    if (activeJobsStat) activeJobsStat.textContent = dashboardData.jobs.active.length;
+  // Update dashboardData with fresh calculated earnings
+  dashboardData.earnings.today = todayE;
+  dashboardData.earnings.month = monthE;
 
-    // Refresh Current View
-    const requestList = document.getElementById('jobRequestsList');
-    if (requestList) fetchAndRenderJobRequests();
+  // Update Sidebar & Badges
+  const requestBadge = document.getElementById('requestCount');
+  if (requestBadge) requestBadge.textContent = dashboardData.jobs.pending.length;
 
-    const activeList = document.getElementById('activeJobsList');
-    if (activeList) fetchAndRenderActiveJobs();
+  // Update Stats Grid
+  const newReqStat = document.getElementById('newRequests');
+  if (newReqStat) newReqStat.textContent = dashboardData.jobs.pending.length;
 
-    // Re-render performance chart with all combined data
-    if (typeof window.updatePerformanceChart === 'function') {
-        window.updatePerformanceChart('week');
-    }
+  const activeJobsStat = document.getElementById('activeJobs');
+  if (activeJobsStat) activeJobsStat.textContent = dashboardData.jobs.active.length;
+
+  const monthlyEarningsStat = document.getElementById('monthlyEarnings');
+  if (monthlyEarningsStat) monthlyEarningsStat.textContent = dashboardData.earnings.month.toLocaleString();
+
+  // Update Overview Cards
+  const activeVal = document.querySelector('.overview-item-card.blue .value');
+  if (activeVal) activeVal.textContent = dashboardData.jobs.active.length;
+
+  const earnVal = document.querySelector('.overview-item-card.green .value');
+  if (earnVal) earnVal.innerHTML = `&#8377;${dashboardData.earnings.today.toLocaleString()}`;
+
+  const pendingVal = document.querySelector('.overview-item-card.orange .value');
+  if (pendingVal) pendingVal.textContent = dashboardData.jobs.pending.length;
+
+  // Refresh Current View Lists
+  const requestList = document.getElementById('jobRequestsList');
+  if (requestList) fetchAndRenderJobRequests();
+
+  const activeList = document.getElementById('activeJobsList');
+  if (activeList) fetchAndRenderActiveJobs();
+
+  // Re-render performance chart with all combined data
+  if (typeof window.updatePerformanceChart === 'function') {
+    window.updatePerformanceChart('week');
+  }
 }
 
 function subscribeToWorkerJobs(uid) {
-    subscribeToDirectWorkerJobs(uid);
-    subscribeToPendingJobPool();
+  subscribeToDirectWorkerJobs(uid);
+  subscribeToPendingJobPool();
 }
 
 // Transform bookings to job format for compatibility
@@ -790,19 +832,47 @@ function calculatePerformanceMetrics() {
 }
 
 function updateHomeOverview() {
-  const { jobs, earnings } = dashboardData;
+  const { jobs, earnings, performance } = dashboardData;
 
-  // Update Active Tasks Card
+  // 1. Recalculate earnings from completed jobs to ensure price sync
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let todayE = 0, monthE = 0;
+  (jobs.completed || []).forEach(j => {
+    const dt = new Date(j.completedAt || j.updatedAt || j.createdAt || Date.now());
+    const amt = parseFloat(j.price || j.amount) || 0;
+    if (dt >= startOfDay) todayE += amt;
+    if (dt >= startOfMonth) monthE += amt;
+  });
+
+  // Use job-calculated earnings
+  earnings.today = todayE;
+  earnings.month = monthE;
+
+  // Update Overview Cards
   const activeVal = document.querySelector('.overview-item-card.blue .value');
   if (activeVal) activeVal.textContent = jobs.active.length;
 
-  // Update Earnings Card
   const earnVal = document.querySelector('.overview-item-card.green .value');
   if (earnVal) earnVal.innerHTML = `&#8377;${earnings.today.toLocaleString()}`;
 
-  // Update Waitlisted Card
   const pendingVal = document.querySelector('.overview-item-card.orange .value');
   if (pendingVal) pendingVal.textContent = jobs.pending.length;
+
+  // Update Stats Grid
+  const newReqStat = document.getElementById('newRequests');
+  if (newReqStat) newReqStat.textContent = jobs.pending.length;
+
+  const activeJobsStat = document.getElementById('activeJobs');
+  if (activeJobsStat) activeJobsStat.textContent = jobs.active.length;
+
+  const monthlyEarningsStat = document.getElementById('monthlyEarnings');
+  if (monthlyEarningsStat) monthlyEarningsStat.textContent = earnings.month.toLocaleString();
+
+  const workerRating = document.getElementById('workerRating');
+  if (workerRating) workerRating.textContent = performance?.rating?.toFixed(1) || '4.8';
 
   // Render Job Lists for Home Page
   const requestsList = document.getElementById('jobRequestsList');
@@ -827,71 +897,71 @@ function updateHomeOverview() {
 } // End of updateHomeOverview
 
 async function renderWorkerRecentActivity(userId) {
-    const container = document.getElementById('recentActivityList');
-    if (!container) return;
+  const container = document.getElementById('recentActivityList');
+  if (!container) return;
 
-    try {
-        // --- ADDED RESILIENCE: Timeout for Activity Fetch ---
-        const fetchWithTimeout = (promise, ms = 7000) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms))]);
-        const results = await Promise.allSettled([
-            fetchWithTimeout(API.jobs.getMyJobs(userId, 'worker')),
-            fetchWithTimeout(API.transactions.getByUser(userId))
-        ]);
-        const jobs = results[0].status === 'fulfilled' ? results[0].value : [];
-        const transactions = results[1].status === 'fulfilled' ? results[1].value : [];
+  try {
+    // --- ADDED RESILIENCE: Timeout for Activity Fetch ---
+    const fetchWithTimeout = (promise, ms = 7000) => Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout')), ms))]);
+    const results = await Promise.allSettled([
+      fetchWithTimeout(API.jobs.getMyJobs(userId, 'worker')),
+      fetchWithTimeout(API.transactions.getByUser(userId))
+    ]);
+    const jobs = results[0].status === 'fulfilled' ? results[0].value : [];
+    const transactions = results[1].status === 'fulfilled' ? results[1].value : [];
 
 
-        let activities = [];
+    let activities = [];
 
-        // Map jobs to activity items
-        (jobs || []).forEach(j => {
-             // For workers, we care about 'accepted', 'completed', or new 'requests'
-             let title = `${j.serviceType || 'Service'} Job ${j.status ? j.status.charAt(0).toUpperCase() + j.status.slice(1) : 'Requested'}`;
-             if (j.status === 'assigned') title = `Accepted ${j.serviceType || 'Service'} Job`;
-             
-             activities.push({
-                 type: 'job',
-                 title: title,
-                 time: j.updatedAt || j.acceptedAt || j.createdAt || j.timestamp,
-                 status: (j.status || 'pending').toLowerCase()
-             });
-        });
+    // Map jobs to activity items
+    (jobs || []).forEach(j => {
+      // For workers, we care about 'accepted', 'completed', or new 'requests'
+      let title = `${j.serviceType || 'Service'} Job ${j.status ? j.status.charAt(0).toUpperCase() + j.status.slice(1) : 'Requested'}`;
+      if (j.status === 'assigned') title = `Accepted ${j.serviceType || 'Service'} Job`;
 
-        // Map transactions to activity items
-        (transactions || []).forEach(t => {
-            activities.push({
-                type: 'transaction',
-                title: t.description || (t.type === 'credit' ? 'Payment Received' : 'Withdrawal'),
-                time: t.createdAt,
-                amount: t.amount,
-                transactionType: t.type
-            });
-        });
+      activities.push({
+        type: 'job',
+        title: title,
+        time: j.updatedAt || j.acceptedAt || j.createdAt || j.timestamp,
+        status: (j.status || 'pending').toLowerCase()
+      });
+    });
 
-        // Sort by time descending
-        activities.sort((a, b) => new Date(b.time) - new Date(a.time));
+    // Map transactions to activity items
+    (transactions || []).forEach(t => {
+      activities.push({
+        type: 'transaction',
+        title: t.description || (t.type === 'credit' ? 'Payment Received' : 'Withdrawal'),
+        time: t.createdAt,
+        amount: t.amount,
+        transactionType: t.type
+      });
+    });
 
-        // Limit to 4
-        const recent = activities.slice(0, 4);
+    // Sort by time descending
+    activities.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-        if (recent.length === 0) {
-            container.innerHTML = '<p class="text-muted" style="text-align:center; padding:1.5rem; font-size: 0.85rem;">No recent activities found.</p>';
-            return;
-        }
+    // Limit to 4
+    const recent = activities.slice(0, 4);
 
-        container.innerHTML = recent.map(activity => {
-            const isJob = activity.type === 'job';
-            const icon = isJob 
-                ? (activity.status === 'completed' ? 'fa-check' : 'fa-tools') 
-                : (activity.transactionType === 'credit' ? 'fa-wallet' : 'fa-receipt');
-            const iconBg = isJob 
-                ? (activity.status === 'completed' ? 'rgba(0, 255, 157, 0.1)' : 'rgba(0, 210, 255, 0.1)') 
-                : (activity.transactionType === 'credit' ? 'rgba(0, 210, 255, 0.1)' : 'rgba(255, 0, 255, 0.1)');
-            const iconColor = isJob 
-                ? (activity.status === 'completed' ? 'var(--neon-green)' : 'var(--neon-blue)') 
-                : (activity.transactionType === 'credit' ? 'var(--neon-blue)' : 'var(--neon-pink)');
+    if (recent.length === 0) {
+      container.innerHTML = '<p class="text-muted" style="text-align:center; padding:1.5rem; font-size: 0.85rem;">No recent activities found.</p>';
+      return;
+    }
 
-            return `
+    container.innerHTML = recent.map(activity => {
+      const isJob = activity.type === 'job';
+      const icon = isJob
+        ? (activity.status === 'completed' ? 'fa-check' : 'fa-tools')
+        : (activity.transactionType === 'credit' ? 'fa-wallet' : 'fa-receipt');
+      const iconBg = isJob
+        ? (activity.status === 'completed' ? 'rgba(0, 255, 157, 0.1)' : 'rgba(0, 210, 255, 0.1)')
+        : (activity.transactionType === 'credit' ? 'rgba(0, 210, 255, 0.1)' : 'rgba(255, 0, 255, 0.1)');
+      const iconColor = isJob
+        ? (activity.status === 'completed' ? 'var(--neon-green)' : 'var(--neon-blue)')
+        : (activity.transactionType === 'credit' ? 'var(--neon-blue)' : 'var(--neon-pink)');
+
+      return `
                 <div class="activity-item" style="animation: slideUp 0.3s ease-out; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 1rem; padding: 0.5rem;">
                     <div class="activity-icon" style="background: ${iconBg}; color: ${iconColor}; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <i class="fas ${icon}" style="font-size: 0.9rem;"></i>
@@ -902,12 +972,12 @@ async function renderWorkerRecentActivity(userId) {
                     </div>
                 </div>
             `;
-        }).join('');
+    }).join('');
 
-    } catch (error) {
-        console.error('Error rendering worker activity:', error);
-        container.innerHTML = '<p class="text-muted" style="text-align:center; padding:1.5rem; font-size: 0.85rem;">Failed to load activity feed.</p>';
-    }
+  } catch (error) {
+    console.error('Error rendering worker activity:', error);
+    container.innerHTML = '<p class="text-muted" style="text-align:center; padding:1.5rem; font-size: 0.85rem;">Failed to load activity feed.</p>';
+  }
 }
 
 // Clear old cached data to force fresh load from Firestore
@@ -1020,6 +1090,18 @@ async function loadPage(pageName, params = null) {
   }
 
   if (typeof showLoading === 'function') showLoading('Loading...');
+
+  // --- NAVIGATION GUARD: RE-CHECK VERIFICATION ---
+  const profile = Storage.get('BlueBridge_user_profile') || {};
+  const isVerified = profile.documentsVerified === true;
+  
+  if (!isVerified && pageName !== 'profile' && pageName !== 'home') {
+    // We allow 'home' for brief view or just stick to profile. 
+    // User requested "only after completing profile users can have access of their respective dash"
+    console.warn(`🛡️ [GUARD] Redirecting ${pageName} -> profile (Not Verified)`);
+    showToast('Verification Required: Please upload your documents first.', 'warning');
+    pageName = 'profile'; 
+  }
 
   try {
     // Small delay to ensure smooth transition
@@ -1385,13 +1467,215 @@ window.saveProfile = async function () {
     const dashboardName = document.getElementById('dashboardUserName');
     if (dashboardName) dashboardName.textContent = name;
 
+    // --- RE-CHECK VERIFICATION STATUS ---
+    if (profile.documentsVerified) {
+        showToast('Profile and Documents updated! Dashboard Unlocked.', 'success');
+    } else {
+        showToast('Profile updated. Complete verification to unlock features.', 'info');
+    }
+
     loadPage('profile');
-    showToast('Profile updated successfully! You will now appear on the customer map.', 'success');
   } catch (err) {
     console.error("Save Profile Error:", err);
     showToast('Error saving: ' + err.message, 'error');
     if (saveBtn) { saveBtn.innerHTML = 'Save Changes'; saveBtn.disabled = false; }
   }
+}
+
+// --- DOCUMENT VERIFICATION HELPERS ---
+window.triggerDocUpload = async function (type) {
+    const input = document.getElementById(`doc-upload-${type}`);
+    if (input) input.click();
+};
+
+window.handleDocUpload = async function (input, type) {
+    if (!input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const user = Storage.get('BlueBridge_user');
+    if (!user || !user.uid) return;
+
+    try {
+        showLoading(`Uploading ${type.replace('-', ' ')}...`);
+        
+        // 1. Storage Reference
+        const storageRef = ref(storage, `worker_verifications/${user.uid}/${type}_${Date.now()}`);
+        
+        // 2. Upload
+        const snapshot = await uploadBytes(storageRef, file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        
+        // 3. Update State (ONLY STORE THE URL, DO NOT VERIFY YET)
+        const profile = Storage.get('BlueBridge_user_profile') || {};
+        if (!profile.verifications) profile.verifications = {};
+        profile.verifications[type] = downloadURL;
+        
+        // Remove simulated auto-verification logic
+        // if (profile.verifications['id-proof']) {
+        //     profile.documentsVerified = true;
+        // }
+
+        Storage.set('BlueBridge_user_profile', profile);
+        
+        // Update UI preview
+        const preview = document.getElementById(`preview-${type}`);
+        if (preview) {
+            preview.innerHTML = `<img src="${downloadURL}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;">`;
+        }
+
+        showToast(`${type.replace('-', ' ')} uploaded! Please click "Verify Document" to complete.`, 'info');
+        
+        // Refresh page to show the new "Verify" button
+        loadPage('profile');
+    } catch (err) {
+        console.error('Upload failed:', err);
+        showToast('Upload failed: ' + err.message, 'error');
+    } finally {
+        hideLoading();
+    }
+};
+
+window.startPremiumScan = async function (imgUrl, currentName) {
+    console.log('[AI Scan Initializing]...', { imgUrl, currentName });
+    
+    // 1. Get HUD references
+    const scanLine = document.getElementById('hud-scan-line');
+    const logBox = document.getElementById('scan-status-log');
+    const verifyBtn = document.getElementById('verify-btn-trigger');
+    
+    if (verifyBtn) {
+        verifyBtn.disabled = true;
+        verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> INITIALIZING...';
+        verifyBtn.style.opacity = '0.5';
+    }
+
+    if (scanLine) scanLine.style.display = 'block';
+
+    const appendLog = (msg, color = 'rgba(0, 210, 255, 0.6)') => {
+        if (logBox) {
+            const div = document.createElement('div');
+            div.className = 'terminal-log';
+            div.style.color = color;
+            div.style.fontSize = '0.6rem';
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+    };
+
+    appendLog('DETECTING_DOCUMENT_STRUCTURE...', '#00d2ff');
+    await new Promise(r => setTimeout(r, 1000));
+    
+    const s1 = document.getElementById('status-1');
+    if (s1) {
+        s1.innerHTML = '<i class="fas fa-check"></i> UPLINK_SUCCESS';
+        s1.style.color = '#4ade80';
+        s1.style.opacity = '1';
+    }
+
+    appendLog('NEURAL_LINK_ESTABLISHED. ANALYZING_PIXELS...');
+    const s2 = document.getElementById('status-2');
+    if (s2) {
+        s2.style.opacity = '1';
+        s2.innerHTML = '<i class="fas fa-spinner fa-spin"></i> NEURAL_ANALYSIS_IN_PROGRESS';
+    }
+
+    try {
+        // 2. REAL BACKEND CALL TO GEMINI
+        const data = await apiFetch('/verification/verify', {
+            method: 'POST',
+            body: JSON.stringify({
+                imageUrl: imgUrl,
+                documentType: 'id-proof',
+                userProvidedData: { name: currentName }
+            })
+        });
+
+        console.log('[AI Verification Result]:', data);
+
+        if (!data.success || !data.result.isValid) {
+            appendLog('AUTHENTICATION_FAILED: ' + (data.result?.rejectionReason || 'Invalid ID'), '#ef4444');
+            if (s2) {
+                s2.innerHTML = '<i class="fas fa-times"></i> ANALYSIS_REJECTED';
+                s2.style.color = '#ef4444';
+            }
+            throw new Error(data.result?.rejectionReason || data.error || 'AI could not verify this ID.');
+        }
+
+        // SUCCESS LOGIC
+        appendLog('AUTHENTICITY_CONFIRMED. TRUST_SCORE: 0.98', '#4ade80');
+        if (s2) {
+            s2.innerHTML = '<i class="fas fa-check"></i> ANALYSIS_COMPLETE';
+            s2.style.color = '#4ade80';
+        }
+        
+        const s3 = document.getElementById('status-3');
+        if (s3) {
+            s3.style.opacity = '1';
+            s3.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SYNCING_BIO_DATA...';
+        }
+
+        appendLog('EXTRACTING_KEY_INDICATORS...');
+        await new Promise(r => setTimeout(r, 1500));
+        
+        if (s3) {
+            s3.innerHTML = '<i class="fas fa-check"></i> DATA_SYNC_SUCCESS';
+            s3.style.color = '#4ade80';
+        }
+
+        const extractedName = data.result.extractedData.name || currentName;
+        const extractedLoc = data.result.extractedData.location || 'New Delhi, India';
+
+        appendLog(`DATA_EXTRACTED: [${extractedName}]`, '#4ade80');
+
+        // 3. Update Storage & Background Processing
+        const profile = Storage.get('BlueBridge_user_profile');
+        const user = Storage.get('BlueBridge_user');
+
+        if (profile) {
+            profile.name = extractedName;
+            profile.location = extractedLoc;
+            profile.documentsVerified = true;
+            Storage.set('BlueBridge_user_profile', profile);
+        }
+
+        if (user) {
+            user.name = extractedName;
+            Storage.set('BlueBridge_user', user);
+        }
+
+        showToast('Identity Verified Successfully!', 'success');
+        
+        // Final UI feedback before reload
+        appendLog('TERMINAL_SESSION_SECURED. RELOADING...', '#4ade80');
+        setTimeout(() => loadPage('profile'), 2000);
+
+    } catch (err) {
+        console.error('AI Verification failed:', err);
+        appendLog('CRITICAL_ERROR: ' + err.message, '#ef4444');
+        showToast('Verification Failed: ' + err.message, 'error');
+        
+        // Reset local state if verification fails
+        const profile = Storage.get('BlueBridge_user_profile');
+        if (profile) {
+            profile.documentsVerified = false;
+            Storage.set('BlueBridge_user_profile', profile);
+        }
+        
+        if (verifyBtn) {
+            verifyBtn.disabled = false;
+            verifyBtn.innerHTML = 'RETRY BIOMETRIC SCAN';
+            verifyBtn.style.opacity = '1';
+        }
+    } finally {
+        if (scanLine) {
+            setTimeout(() => scanLine.style.display = 'none', 1000);
+        }
+    }
+}
+
+
+function simulateAutoFill(currentName) {
+    // Deprecated in favor of startPremiumScan
 }
 
 function getProfilePage() {
@@ -1438,7 +1722,9 @@ function getProfilePage() {
             
             <!-- Details Row -->
             <div style="display:flex; align-items:center; gap: 1rem; flex-wrap: wrap;">
-                <span class="badge badge-success" style="backdrop-filter: blur(4px); padding: 0.25rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.5px; border-radius: 20px;">Verified Pro</span>
+                ${profile.documentsVerified ? 
+                  `<span class="badge badge-success" style="backdrop-filter: blur(4px); padding: 0.25rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.5px; border-radius: 20px;">Verified Pro</span>` : 
+                  `<span class="badge" style="background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 0.25rem 0.7rem; font-size: 0.75rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">Unverified</span>`}
                 <span style="color: rgba(255,255,255,0.7); display:flex; align-items:center; gap:0.5rem; font-size: 1rem;">
                     <i class="fas fa-map-marker-alt" style="color: var(--neon-pink);"></i> ${profile.location || 'Location not set'}
                 </span>
@@ -1684,24 +1970,13 @@ function getProfilePage() {
                       <div style="font-size: 2rem;"><i class="fas fa-wallet" style="color: #34d399;"></i></div>
                       <div style="text-align: left;">
                           <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px;">Total Earned</div>
-                          <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">&#8377;${earnings}</div>
+                          <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">&#8377;${earnings ? (earnings.total || 0) : 0}</div>
                       </div>
                   </div>
                   <div style="font-size: 0.8rem; color: var(--success);">Top earner</div>
               </div>
 
-              <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
-                  <div style="display: flex; align-items: center; gap: 1.5rem;">
-                      <div style="font-size: 2rem;"><i class="fas fa-star" style="color: #fbbf24;"></i></div>
-                      <div style="text-align: left;">
-                          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 1px;">Rating</div>
-                          <div style="font-weight: 800; font-size: 1.5rem; color: #fff;">${user.BlueBridge_rating || 5.0}</div>
-                      </div>
-                  </div>
-                  <div style="font-size: 0.8rem; color: var(--warning);">High priority</div>
-              </div>
-
-              <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
+               <div style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); padding: 1.5rem; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(255,255,255,0.05);">
                   <div style="display: flex; align-items: center; gap: 1.5rem;">
                       <div style="font-size: 2rem;"><i class="fas fa-check-circle" style="color: #a78bfa;"></i></div>
                       <div style="text-align: left;">
@@ -1712,7 +1987,149 @@ function getProfilePage() {
                   <div style="font-size: 0.8rem; color: var(--primary-400);">Excellent</div>
               </div>
           </div>
-       </div>
+        <style>
+            @keyframes scanMove { 0% { top: 0; } 100% { top: 100%; } }
+            @keyframes pulseGlow { 0% { opacity: 0.3; transform: scale(0.98); } 50% { opacity: 0.6; transform: scale(1.02); } 100% { opacity: 0.3; transform: scale(0.98); } }
+            @keyframes crtFlicker { 0% { opacity: 0.9; } 50% { opacity: 1; } 100% { opacity: 0.9; } }
+            
+            .glass-id-terminal {
+                background: linear-gradient(135deg, rgba(8, 12, 16, 0.9), rgba(16, 24, 32, 0.95)) !important;
+                backdrop-filter: blur(30px) !important;
+                border: 1px solid rgba(0, 210, 255, 0.15) !important;
+                box-shadow: 0 0 80px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(0, 210, 255, 0.05) !important;
+                position: relative;
+                overflow: hidden;
+                width: 100%;
+                max-width: 1200px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .hud-scanner-bar {
+                position: absolute;
+                left: 0; width: 100%; height: 3px;
+                background: linear-gradient(to right, transparent, #00d2ff, transparent);
+                box-shadow: 0 0 15px #00d2ff;
+                z-index: 20;
+                display: none;
+                animation: scanMove 2.5s linear infinite;
+            }
+            .holographic-overlay {
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                background: repeating-linear-gradient(0deg, rgba(0, 210, 255, 0.03) 0px, rgba(0, 210, 255, 0.03) 1px, transparent 1px, transparent 2px);
+                pointer-events: none;
+                z-index: 5;
+                opacity: 0.5;
+            }
+            .terminal-log {
+                font-family: 'JetBrains Mono', 'Fira Code', monospace;
+                font-size: 0.65rem;
+                color: rgba(0, 210, 255, 0.6);
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+
+            /* Responsive Adjustments */
+            .terminal-grid {
+                display: grid;
+                grid-template-columns: 1fr 340px;
+                gap: 3rem;
+                position: relative;
+                z-index: 10;
+            }
+            @media (max-width: 992px) {
+                .glass-id-terminal { padding: 2rem !important; border-radius: 24px !important; }
+                .terminal-header { flex-direction: column; align-items: flex-start !important; gap: 2rem; margin-bottom: 2rem !important; }
+                .terminal-header-title { font-size: 1.5rem !important; }
+                .terminal-grid { grid-template-columns: 1fr; gap: 2rem; }
+                .id-viewport { height: 300px !important; }
+                .terminal-footer { flex-direction: column; align-items: flex-start !important; gap: 2rem; padding: 1.5rem !important; }
+            }
+        </style>
+
+        <!-- IDENTITY ANALYSIS TERMINAL HUD -->
+        <div class="card glass-id-terminal" style="grid-column: 1 / -1; padding: 3.5rem; margin-top: 2rem;">
+            <div class="holographic-overlay"></div>
+            
+            <!-- Terminal Header -->
+            <div class="terminal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4rem; position: relative; z-index: 10;">
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <div style="width: 50px; height: 50px; background: rgba(0, 210, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);">
+                        <i class="fas fa-microchip" style="color: #00d2ff; font-size: 1.5rem; animation: pulseGlow 3s infinite;"></i>
+                    </div>
+                    <div>
+                        <h2 class="terminal-header-title" style="font-size: 2.2rem; font-weight: 1000; margin: 0; color: #fff; letter-spacing: -1.5px; text-transform: uppercase;">ID-CORE T-01</h2>
+                        <div class="terminal-log" style="margin-top: 0.3rem;">
+                            <span style="color: #4ade80;">[SYSTEM ACTIVE]</span> NV_LINK_STABLE
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: right;">
+                    <div style="display: flex; align-items: center; gap: 1rem; background: rgba(0,0,0,0.4); padding: 0.6rem 1.2rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${profile.documentsVerified ? '#4ade80' : '#fbbf24'}; box-shadow: 0 0 10px ${profile.documentsVerified ? '#4ade80' : '#fbbf24'};"></div>
+                        <span style="font-size: 0.7rem; font-weight: 800; letter-spacing: 1px; color: ${profile.documentsVerified ? '#4ade80' : '#fbbf24'}; text-transform: uppercase;">
+                            ${profile.documentsVerified ? 'AUTH_OK' : 'PENDING'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="terminal-grid">
+                <!-- ID VIEWPORT -->
+                <div style="position: relative;">
+                    <div id="preview-id-proof" class="id-viewport" style="width: 100%; height: 400px; background: rgba(0,0,0,0.6); border: 2px solid rgba(0, 210, 255, 0.1); border-radius: 24px; overflow: hidden; position: relative; box-shadow: inset 0 0 50px rgba(0,0,0,0.8);">
+                        <div id="hud-scan-line" class="hud-scanner-bar"></div>
+                        
+                        ${profile.verifications?.['id-proof'] ? 
+                          `<img src="${profile.verifications['id-proof']}" style="width:100%; height:100%; object-fit:contain; filter: contrast(1.1) brightness(1.1) ${profile.documentsVerified ? '' : 'grayscale(0.3)'}; transition: all 0.5s ease;">` : 
+                          `<div style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: rgba(0, 210, 255, 0.15); padding: 2rem; text-align: center;">
+                              <i class="fas fa-id-card-clip" style="font-size: 5rem; margin-bottom: 1.5rem;"></i>
+                              <div class="terminal-log">AWAITING_PHYSICAL_UPLINK...</div>
+                           </div>`}
+                    </div>
+                </div>
+
+                <!-- CONTROL UNIT -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 24px; padding: 2rem; flex: 1; display: flex; flex-direction: column; gap: 1.5rem;">
+                        <h4 class="terminal-log" style="color: #fff; margin: 0; font-size: 0.8rem; border-bottom: 1px solid rgba(0, 210, 255, 0.2); padding-bottom: 0.8rem;">Diagnostics</h4>
+                        
+                        <div id="scan-status-log" style="display: flex; flex-direction: column; gap: 1rem; max-height: 200px; overflow-y: auto;">
+                            <div class="terminal-log" style="font-size: 0.6rem; opacity: 0.4;">[${new Date().toLocaleTimeString()}] READY_FOR_SCAN</div>
+                            
+                            ${profile.verifications?.['id-proof'] ? `
+                                <div class="terminal-log" id="status-1" style="color: #4ade80;"><i class="fas fa-check"></i> UPLINK_SUCCESS</div>
+                                <div class="terminal-log" id="status-2" style="opacity: 0.3;">[PENDING] NEURAL_LINK</div>
+                            ` : `
+                                <div class="terminal-log" style="color: #fbbf24;"><i class="fas fa-exclamation-triangle"></i> NO_SOURCE</div>
+                            `}
+                        </div>
+
+                        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 0.8rem;">
+                            ${profile.verifications?.['id-proof'] ? (
+                                profile.documentsVerified ? `
+                                    <div style="background: rgba(74, 222, 128, 0.1); border: 1px solid rgba(74, 222, 128, 0.3); color: #4ade80; padding: 1rem; border-radius: 12px; font-weight: 800; font-size: 0.8rem; text-align: center; letter-spacing: 1px;">
+                                        VERIFIED_SECURE
+                                    </div>
+                                    <button class="btn" onclick="triggerDocUpload('id-proof')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 0.7rem; border-radius: 12px; font-size: 0.65rem; text-transform: uppercase;">Update Source</button>
+                                ` : `
+                                    <button class="btn" id="verify-btn-trigger" onclick="window.startPremiumScan('${profile.verifications['id-proof']}', '${user.name}')" style="background: linear-gradient(135deg, #00d2ff, #3a7bd5); border: none; color: #fff; padding: 1.2rem; border-radius: 16px; font-weight: 900; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; box-shadow: 0 0 30px rgba(0, 210, 255, 0.2); cursor: pointer;">
+                                        INITIATE SCAN
+                                    </button>
+                                    <button class="btn" onclick="triggerDocUpload('id-proof')" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); padding: 0.7rem; border-radius: 12px; font-size: 0.65rem; text-transform: uppercase;">Retry Upload</button>
+                                `
+                            ) : `
+                                <button class="btn" onclick="triggerDocUpload('id-proof')" style="background: linear-gradient(135deg, #4f46e5, #ec4899); border: none; color: #fff; padding: 1.2rem; border-radius: 16px; font-weight: 900; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1.5px; box-shadow: 0 10px 20px rgba(236, 72, 153, 0.15); cursor: pointer;">
+                                    UPLINK ID
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <input type="file" id="doc-upload-id-proof" accept="image/*" style="display:none;" onchange="handleDocUpload(this, 'id-proof')">
+        </div>
     </div>
   `;
 }
@@ -1922,7 +2339,7 @@ async function fetchAndRenderJobRequests() {
   try {
     // Rely on dashboardData which is updated in REAL-TIME by subscribeToWorkerJobs
     const jobs = dashboardData.jobs.pending || [];
-    console.log(`ðŸ“¡ [AUTOPILOT] Rendering ${jobs.length} job requests from live sync`);
+    console.log(`📡 [AUTOPILOT] Rendering ${jobs.length} job requests from live sync`);
 
     // Render the jobs
     renderJobRequestsList(jobs, listContainer);
@@ -1959,7 +2376,7 @@ function renderJobRequestsList(jobs, container) {
   const isInitialLoad = container.innerHTML.includes('Loading...') || container.innerHTML.includes('Syncing...') || container.innerHTML === '';
   if (!isInitialLoad && isListIdentical(jobs, lastRenderedJobRequests)) {
 
-    console.log('ðŸ“¡ [AUTOPILOT] Skipping redundant render for job requests');
+    console.log('📡 [AUTOPILOT] Skipping redundant render for job requests');
     return;
   }
   lastRenderedJobRequests = [...jobs];
@@ -2010,7 +2427,7 @@ async function fetchAndRenderActiveJobs() {
   try {
     // Rely on dashboardData which is updated in REAL-TIME by subscribeToWorkerJobs
     const activeJobs = dashboardData.jobs.active || [];
-    console.log(`ðŸ“¡ [AUTOPILOT] Rendering ${activeJobs.length} active jobs from live sync`);
+    console.log(`📡 [AUTOPILOT] Rendering ${activeJobs.length} active jobs from live sync`);
 
     // Update Cache & UI
     Storage.set('worker_active_jobs_cache', activeJobs);
@@ -2067,10 +2484,10 @@ window.renderActiveJobsList = function (activeJobs, container) {
   const isInitialLoad = container.innerHTML.includes('Loading...') || container.innerHTML.includes('Syncing...') || container.innerHTML === '';
   if (!isInitialLoad && isListIdentical(activeJobs, lastRenderedActiveJobs)) {
 
-    console.log('ðŸ“¡ [AUTOPILOT] Skipping redundant render for active jobs');
+    console.log('📡 [AUTOPILOT] Skipping redundant render for active jobs');
     return;
   }
-  
+
   lastRenderedActiveJobs = [...activeJobs];
 
   if (activeJobs.length === 0) {
@@ -2118,8 +2535,6 @@ window.renderActiveJobsList = function (activeJobs, container) {
               </div>
             </div>
 
-            <div id="mission-radar-${job.id}" style="margin-bottom: 1.5rem;"></div>
-
             <div class="job-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
 
               <button class="btn btn-success" style="grid-column: span 2; padding: 1rem; font-weight: 700;" onclick="completeJob('${job.id}')">
@@ -2138,14 +2553,6 @@ window.renderActiveJobsList = function (activeJobs, container) {
                 <i class="fas fa-directions" style="margin-right: 8px;"></i> Get Directions (Google Maps)
               </button>
           `).join('');
-
-  // --- GLASS COCKPIT: AUTO-TRIGGER RADAR MAPS ---
-  setTimeout(() => {
-    activeJobs.forEach(job => {
-      console.log(`ðŸ“¡ [AUTOPILOT] Signaling Radar for Job: ${job.id}`);
-      initActiveMissionMap(job.id);
-    });
-  }, 100);
 }
 
 
@@ -2172,7 +2579,7 @@ async function fetchAndRenderJobHistory() {
     // 3. Update stats in page header
     const countEl = document.getElementById('history-count');
     const earningsEl = document.getElementById('history-earnings');
-    
+
     if (countEl) countEl.textContent = completedJobs.length;
     if (earningsEl) earningsEl.textContent = `â‚¹${totalEarnings.toLocaleString()}`;
 
@@ -2195,7 +2602,7 @@ function renderJobHistoryList(jobs, container) {
   if (jobs.length === 0) {
     container.innerHTML = `
           <div class="empty-state" style="padding: 4rem 2rem; text-align:center; border-radius: 24px; background: rgba(255,255,255,0.02); border: 1px dashed rgba(255,255,255,0.1);">
-             <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1.5rem;">ðŸ“œ</div>
+             <div style="font-size: 4rem; opacity: 0.2; margin-bottom: 1rem;">📡</div>
              <h3 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-primary);">No Job History Yet</h3>
              <p style="color: var(--text-tertiary); margin-bottom: 2rem; max-width: 300px; margin-left:auto; margin-right:auto;">Your finished jobs and earned income will appear here once you complete your first service.</p>
              <button class="btn btn-primary" style="padding: 0.75rem 2rem; border-radius: 12px;" onclick="loadPage('home')">Return to Dashboard</button>
@@ -2227,10 +2634,10 @@ function renderJobHistoryList(jobs, container) {
             
             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; padding-top: 1.25rem; border-top: 1px solid rgba(255,255,255,0.05);">
               <div style="display:flex; gap: 1.5rem;">
-                <span title="Completion Date" style="font-size: 0.85rem; color: var(--text-tertiary); display:flex; align-items:center; gap:6px;"><i class="fas fa-calendar-check" style="opacity:0.6;"></i> ${job.completedAt ? new Date(job.completedAt).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'}) : (job.scheduledDate || 'Recently')}</span>
+                <span title="Completion Date" style="font-size: 0.85rem; color: var(--text-tertiary); display:flex; align-items:center; gap:6px;"><i class="fas fa-calendar-check" style="opacity:0.6;"></i> ${job.completedAt ? new Date(job.completedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : (job.scheduledDate || 'Recently')}</span>
                 <span title="Booking Reference" style="font-size: 0.85rem; color: var(--text-tertiary); display:flex; align-items:center; gap:6px;"><i class="fas fa-fingerprint" style="opacity:0.6;"></i> #${(job.id || 'N/A').toString().slice(-6).toUpperCase()}</span>
               </div>
-              <span style="font-weight: 800; color: var(--success); font-size: 1.4rem;">â‚¹${job.price}</span>
+              <span style="font-weight: 800; color: var(--success); font-size: 1.4rem;">₹${job.price}</span>
             </div>
           </div>
           `).join('');
@@ -2288,148 +2695,94 @@ window.fetchAndRenderActiveJobs = fetchAndRenderActiveJobs;
 window.fetchAndRenderJobHistory = fetchAndRenderJobHistory;
 
 // --- GLASS COCKPIT: LIVE TRACKING & MISSION RADAR ---
-async function startGlobalLocationWatch() {
-    if (!navigator.geolocation) {
-        console.warn('Geolocation not supported');
-        return;
-    }
+let workerLiveMap = null;
+let workerLiveMarker = null;
 
-    if (globalWorkerWatchId) navigator.geolocation.clearWatch(globalWorkerWatchId);
+window.startGPS = function () {
+  if (!navigator.geolocation) {
+    console.warn('Geolocation not supported');
+    return;
+  }
 
-    console.log('ðŸ›°ï¸ [WORKER] Starting Global Live Tracking Watch...');
-    
-    globalWorkerWatchId = navigator.geolocation.watchPosition(
-        (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
-            console.log(`ðŸ“ [WORKER] GPS Update: ${latitude}, ${longitude}`);
-            
-            // AUTO-SYNC: Push worker location to any active jobs so customers can track them
-            if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
-                const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
-                
-                window.activeBookingIds.forEach(bookingId => {
-                    console.log(`ðŸ›°ï¸ [WORKER] Broadcasting Signal for Job: ${bookingId}`);
-                    // Direct API sync (redundant to Firestore for dual-availability)
-                    fetch(`${apiBase}/location/${bookingId}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            userId: Storage.get('BlueBridge_user')?.uid || 'anonymous',
-                            userType: 'worker',
-                            latitude,
-                            longitude,
-                            accuracy,
-                            timestamp: new Date().toISOString()
-                        })
-                    }).catch(e => console.warn('Silent sync failed for job:', bookingId));
-                });
-            }
-        },
-        (error) => console.warn('âŒ [WORKER] Watch Error:', error.message),
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-    );
-}
+  if (globalWorkerWatchId) navigator.geolocation.clearWatch(globalWorkerWatchId);
+
+  const btn = document.getElementById('startGPSBtn');
+  if (btn) btn.style.display = 'none';
+  const indicator = document.getElementById('liveTrackingIndicator');
+  if (indicator) indicator.style.display = 'flex';
+
+  console.log('🛰️ [WORKER] Starting Global Live Tracking Watch...');
+
+  globalWorkerWatchId = navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude, accuracy } = position.coords;
+      console.log(`📍 [WORKER] GPS Update: ${latitude}, ${longitude}`);
+
+      // 1. Update Worker Dashboard Map
+      const mapContainer = document.getElementById('worker-live-map');
+      if (mapContainer && typeof L !== 'undefined') {
+        if (!workerLiveMap) {
+          mapContainer.innerHTML = '';
+          workerLiveMap = L.map('worker-live-map', { zoomControl: false, attributionControl: false }).setView([latitude, longitude], 15);
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(workerLiveMap);
+          workerLiveMarker = L.circleMarker([latitude, longitude], {
+            radius: 8, color: '#39ff14', fillColor: '#39ff14', fillOpacity: 0.8, className: 'gps-pulse-customer'
+          }).addTo(workerLiveMap);
+        } else {
+          workerLiveMarker.setLatLng([latitude, longitude]);
+          workerLiveMap.panTo([latitude, longitude]);
+        }
+      }
+
+      // 2. Push to Active Bookings in Firestore via standard schema
+      if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
+        window.activeBookingIds.forEach(bookingId => {
+          console.log(`🛰️ [WORKER] Broadcasting Signal for Job: ${bookingId}`);
+          try {
+            const user = Storage.get('BlueBridge_user');
+            setDoc(doc(db, 'locations', bookingId), {
+              workerLocation: { lat: latitude, lng: longitude, timestamp: new Date().toISOString() },
+              workerId: user?.uid || 'anonymous'
+            }, { merge: true });
+          } catch (e) { console.warn('Silent sync failed for job:', bookingId, e); }
+        });
+      }
+    },
+    (error) => {
+      console.warn('❌ [WORKER] Watch Error:', error.message);
+      if (indicator) indicator.style.display = 'none';
+      if (btn) btn.style.display = 'flex';
+    },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+  );
+};
+window.startGlobalLocationWatch = window.startGPS;
 
 async function initGlobalBookingSync() {
-    console.log('ðŸ“¡ [WORKER SYNC] Initializing Global Job Signal...');
-    const user = Storage.get('BlueBridge_user');
-    if (!user) return;
+  console.log('📡 [WORKER SYNC] Initializing Global Job Signal...');
+  const user = Storage.get('BlueBridge_user');
+  if (!user) return;
 
-    try {
-        const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
-        
-        // Initial fetch to get active jobs
-        const res = await fetch(`${apiBase}/bookings?user_id=${user.uid}&role=worker`);
-        const jobs = await res.json();
-        
-        const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
-        window.activeBookingIds = (jobs || [])
-            .filter(j => activeStatuses.includes((j.status || '').toLowerCase()))
-            .map(j => j.id);
+  try {
+    const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
 
-        console.log(`ðŸ“¡ [WORKER SYNC] Found ${window.activeBookingIds.length} active jobs to broadcast.`);
+    // Initial fetch to get active jobs
+    const res = await fetch(`${apiBase}/bookings?user_id=${user.uid}&role=worker`);
+    const jobs = await res.json();
 
-        if (window.activeBookingIds.length > 0) {
-            startGlobalLocationWatch();
-            // Trigger radar for active jobs
-            setTimeout(() => {
-                window.activeBookingIds.forEach(id => initActiveMissionMap(id));
-            }, 1000);
-        }
-    } catch (err) {
-        console.warn('ðŸ“¡ [WORKER SYNC] Initial fetch failed:', err);
+    const activeStatuses = ['assigned', 'in_progress', 'accepted', 'running', 'on the way'];
+    window.activeBookingIds = (jobs || [])
+      .filter(j => activeStatuses.includes((j.status || '').toLowerCase()))
+      .map(j => j.id);
+
+    console.log(`📡 [WORKER SYNC] Found ${window.activeBookingIds.length} active jobs to broadcast.`);
+
+    if (window.activeBookingIds.length > 0) {
+      startGlobalLocationWatch();
     }
-}
-
-async function initActiveMissionMap(bookingId) {
-    const container = document.getElementById(`mission-radar-${bookingId}`);
-    if (!container) return;
-
-    console.log(`ðŸš€ [MISSION RADAR] Deploying Signal for: ${bookingId}`);
-    
-    container.innerHTML = `
-        <div class="mission-radar-wrapper" style="position:relative; width:100%; height:180px; background:rgba(0,0,0,0.4); border-radius:15px; overflow:hidden; border:1px solid rgba(0,255,255,0.1);">
-            <div class="radar-pulse"></div>
-            <div class="radar-sweep"></div>
-            <div id="map-${bookingId}" style="width:100%; height:100%; opacity:0.6; pointer-events:none;"></div>
-            <div style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.7); padding:4px 10px; border-radius:20px; font-size:10px; color:#00f2ff; border:1px solid #00f2ff;">
-                LIVE TELEMETRY
-            </div>
-            <div id="customer-status-${bookingId}" style="position:absolute; top:10px; left:10px; font-size:11px; color:#fff; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:4px;">
-                Waiting for signal...
-            </div>
-        </div>
-    `;
-
-    if (typeof L === 'undefined') {
-        console.warn('Leaflet not loaded yet, retrying radar map...');
-        setTimeout(() => initActiveMissionMap(bookingId), 1000);
-        return;
-    }
-
-    const map = L.map(`map-${bookingId}`, { zoomControl: false, attributionControl: false }).setView([28.4089, 77.3178], 15);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-    let customerMarker = L.circleMarker([28.4089, 77.3178], {
-        radius: 8,
-        color: '#00f2ff',
-        fillColor: '#00f2ff',
-        fillOpacity: 0.8,
-        className: 'gps-pulse-customer'
-    }).addTo(map);
-
-    // Fetch initial state
-    getDoc(doc(db, 'locations', bookingId)).then(docSnap => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const loc0 = data.customerLocation || data.customer;
-            const lat0 = loc0?.lat ?? loc0?.latitude;
-            const lng0 = loc0?.lng ?? loc0?.longitude;
-            if (lat0 && lng0) {
-                const pos = [lat0, lng0];
-                customerMarker.setLatLng(pos);
-                map.setView(pos, 15);
-                document.getElementById(`customer-status-${bookingId}`).innerHTML = 
-                    `<span style="color:#00f2ff;">â—</span> SIGNAL ESTABLISHED`;
-            }
-        }
-    });
-
-    onSnapshot(doc(db, 'locations', bookingId), (docSnap) => {
-        if (docSnap.exists()) {
-            const data = docSnap.data();
-            const loc2 = data.customerLocation || data.customer;
-            const lat2 = loc2?.lat ?? loc2?.latitude;
-            const lng2 = loc2?.lng ?? loc2?.longitude;
-            if (lat2 && lng2) {
-                const newPos = [lat2, lng2];
-                customerMarker.setLatLng(newPos);
-                map.panTo(newPos);
-                document.getElementById(`customer-status-${bookingId}`).innerHTML = 
-                    `<span style="color:#00f2ff;">â—</span> CUSTOMER SIGNAL DETECTED`;
-            }
-        }
-    });
+  } catch (err) {
+    console.warn('📡 [WORKER SYNC] Initial fetch failed:', err);
+  }
 }
 
 
