@@ -15,7 +15,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build
+# Build output is committed for reliable Cloudflare deployment
+# dist/
 .vite/
-dist/
 .vercel

@@ -1,0 +1,49 @@
+<svg width="500" height="500" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:hsl(220, 85%, 55%);stop-opacity:1" />
+      <stop offset="50%" style="stop-color:hsl(270, 70%, 60%);stop-opacity:1" />
+      <stop offset="100%" style="stop-color:hsl(25, 95%, 58%);stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:hsl(220, 85%, 45%);stop-opacity:0.3" />
+      <stop offset="100%" style="stop-color:hsl(270, 70%, 50%);stop-opacity:0.3" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background circles -->
+  <circle cx="250" cy="250" r="220" fill="url(#grad2)"/>
+  <circle cx="250" cy="250" r="180" fill="url(#grad2)"/>
+  
+  <!-- Worker icons -->
+  <g transform="translate(250, 180)">
+    <circle cx="0" cy="0" r="40" fill="url(#grad1)"/>
+    <text x="0" y="15" font-size="40" text-anchor="middle">🔧</text>
+  </g>
+  
+  <g transform="translate(150, 280)">
+    <circle cx="0" cy="0" r="35" fill="url(#grad1)"/>
+    <text x="0" y="12" font-size="35" text-anchor="middle">⚡</text>
+  </g>
+  
+  <g transform="translate(350, 280)">
+    <circle cx="0" cy="0" r="35" fill="url(#grad1)"/>
+    <text x="0" y="12" font-size="35" text-anchor="middle">🪚</text>
+  </g>
+  
+  <g transform="translate(200, 360)">
+    <circle cx="0" cy="0" r="30" fill="url(#grad1)"/>
+    <text x="0" y="10" font-size="30" text-anchor="middle">🎨</text>
+  </g>
+  
+  <g transform="translate(300, 360)">
+    <circle cx="0" cy="0" r="30" fill="url(#grad1)"/>
+    <text x="0" y="10" font-size="30" text-anchor="middle">🚰</text>
+  </g>
+  
+  <!-- Connecting lines -->
+  <line x1="250" y1="220" x2="150" y2="280" stroke="url(#grad1)" stroke-width="2" opacity="0.3"/>
+  <line x1="250" y1="220" x2="350" y2="280" stroke="url(#grad1)" stroke-width="2" opacity="0.3"/>
+  <line x1="150" y1="280" x2="200" y2="360" stroke="url(#grad1)" stroke-width="2" opacity="0.3"/>
+  <line x1="350" y1="280" x2="300" y2="360" stroke="url(#grad1)" stroke-width="2" opacity="0.3"/>
+</svg>
