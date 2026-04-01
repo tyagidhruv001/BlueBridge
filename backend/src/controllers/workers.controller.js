@@ -83,62 +83,62 @@ exports.getWorkers = async (req, res) => {
         });
 
         for (const userDoc of usersSnapshot.docs) {
-            const userData = userDoc.data();
-            const uid = userDoc.id;
+            try {
+                const userData = userDoc.data() || {};
+                const uid = userDoc.id;
 
-            // Try to get extended professional data from 'workers' collection
-            const workerDoc = await db.collection('workers').doc(uid).get();
-            const workerData = workerDoc.exists ? workerDoc.data() : {};
+                // Try to get extended professional data from 'workers' collection
+                const workerDoc = await db.collection('workers').doc(uid).get();
+                const workerData = (workerDoc.exists ? workerDoc.data() : {}) || {};
 
-            // Combine data
-            const combinedData = {
-                uid,
-                id: uid,
-                name: userData.name || 'Unknown Professional',
-                avatar: userData.profile_pic || userData.avatar || '',
-                is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-                category: workerData.category || (userData.skills ? userData.skills[0].toLowerCase() : 'general'),
-                rating_avg: workerData.avg_rating || workerData.stats?.avg_rating || 4.5,
-                experience_years: workerData.experience_years || 0,
-                base_price: workerData.base_price || 0,
-                bio: workerData.bio || userData.bio || '',
-                // Include real-time GPS location so map markers render correctly
-                location: workerData.location || userData.location || null,
-                isBusy: busyWorkerIds.has(uid),
-                ...workerData
-            };
+                // Combine data with extreme defensive checks
+                const combinedData = {
+                    uid,
+                    id: uid,
+                    name: userData.name || 'Unknown Professional',
+                    avatar: userData.profile_pic || userData.avatar || '',
+                    is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
+                    category: workerData.category || (userData.skills && userData.skills.length > 0 ? userData.skills[0].toLowerCase() : 'general'),
+                    rating_avg: workerData.avg_rating || (workerData.stats ? workerData.stats.avg_rating : 4.5) || 4.5,
+                    experience_years: workerData.experience_years || 0,
+                    base_price: workerData.base_price || 0,
+                    bio: workerData.bio || userData.bio || '',
+                    location: workerData.location || userData.location || null,
+                    isBusy: busyWorkerIds.has(uid),
+                    ...workerData
+                };
 
-            // Filter by category if requested
-            if (category && category !== 'all') {
-                const targetCategory = category.toLowerCase();
-                // Match against category OR normalized profession
-                const workerCategory = (combinedData.category || '').toLowerCase();
-                const workerProfession = (combinedData.profession || '').toLowerCase();
-                
-                if (workerCategory !== targetCategory && workerProfession !== targetCategory) {
-                    continue;
+                // Filter by category if requested
+                if (category && category !== 'all') {
+                    const targetCategory = category.toLowerCase();
+                    const workerCategory = (combinedData.category || '').toLowerCase();
+                    const workerProfession = (combinedData.profession || '').toLowerCase();
+                    
+                    if (workerCategory !== targetCategory && workerProfession !== targetCategory) {
+                        continue;
+                    }
                 }
-            }
 
-            workers.push(combinedData);
+                workers.push(combinedData);
+            } catch (innerError) {
+                console.error(`[WORKERS ERROR] Failed to process worker ${userDoc.id}:`, innerError);
+                // Continue to next worker so one bad record doesn't crash everything
+            }
         }
 
         console.log(`[WORKERS] Found ${workers.length} registered workers`);
 
-        // Simple scoring for recommendation (Top rated first)
         workers = workers.map(w => {
             const rating = w.rating_avg || 4.5;
-            const experience = w.experience_years || 0;
-            w.ai_score = (rating * 0.7) + (Math.min(experience, 10) * 0.3);
+            const exp = w.experience_years || 0;
+            w.ai_score = (rating * 0.7) + (Math.min(exp, 10) * 0.3);
             return w;
-        });
-
-        workers.sort((a, b) => b.ai_score - a.ai_score);
+        }).sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
 
         res.status(200).json(workers);
     } catch (error) {
-        console.error('Error in getWorkers:', error);
-        res.status(500).json({ error: error.message });
+        console.error('CRITICAL: Error in getWorkers:', error);
+        res.status(500).json({ error: 'Internal Server Error', detail: error.message });
     }
 };
 
