@@ -92,20 +92,25 @@ exports.getWorkers = async (req, res) => {
                 const workerData = (workerDoc.exists ? workerDoc.data() : {}) || {};
 
                 // Combine data with extreme defensive checks
+                // Spread workerData FIRST so explicit safe values below take precedence
+                const rawCategory = workerData.category
+                    || (userData.skills && userData.skills.length > 0 && typeof userData.skills[0] === 'string' ? userData.skills[0] : 'general');
                 const combinedData = {
+                    ...workerData,
                     uid,
                     id: uid,
                     name: userData.name || 'Unknown Professional',
                     avatar: userData.profile_pic || userData.avatar || '',
                     is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-                    category: workerData.category || (userData.skills && userData.skills.length > 0 && typeof userData.skills[0] === 'string' ? userData.skills[0].toLowerCase() : 'general'),
+                    // Always a lowercase string so frontend .toLowerCase() never crashes
+                    category: (typeof rawCategory === 'string' ? rawCategory : String(rawCategory || 'general')).toLowerCase(),
+                    profession: typeof workerData.profession === 'string' ? workerData.profession.toLowerCase() : (workerData.profession ? String(workerData.profession).toLowerCase() : ''),
                     rating_avg: workerData.avg_rating || (workerData.stats ? workerData.stats.avg_rating : 4.5) || 4.5,
                     experience_years: workerData.experience_years || 0,
                     base_price: workerData.base_price || 0,
                     bio: workerData.bio || userData.bio || '',
                     location: workerData.location || userData.location || null,
-                    isBusy: busyWorkerIds.has(uid),
-                    ...workerData
+                    isBusy: busyWorkerIds.has(uid)
                 };
 
                 // Filter by category if requested
