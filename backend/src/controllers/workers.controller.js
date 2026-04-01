@@ -21,12 +21,14 @@ exports.updateWorker = async (req, res) => {
             verification_notes,
             total_jobs,
             avg_rating,
-            lifetime_earnings
+            lifetime_earnings,
+            profession
         } = req.body;
 
         const workerData = {
             uid,
-            category,
+            category: profession || category, // Keep in sync
+            profession,
             is_online,
             is_verified,
             base_price,
@@ -67,6 +69,19 @@ exports.getWorkers = async (req, res) => {
         const usersSnapshot = await db.collection('users').where('role', '==', 'worker').get();
         let workers = [];
 
+        // Identify all workers with active assignments
+        const activeJobsSnapshot = await db.collection('jobs')
+            .where('status', 'in', ['assigned', 'accepted', 'in_progress', 'running', 'on the way', 'active'])
+            .get();
+        
+        const busyWorkerIds = new Set();
+        activeJobsSnapshot.forEach(doc => {
+            const job = doc.data();
+            if (job.workerId && job.workerId !== 'auto-assign') {
+                busyWorkerIds.add(job.workerId);
+            }
+        });
+
         for (const userDoc of usersSnapshot.docs) {
             const userData = userDoc.data();
             const uid = userDoc.id;
@@ -89,13 +104,18 @@ exports.getWorkers = async (req, res) => {
                 bio: workerData.bio || userData.bio || '',
                 // Include real-time GPS location so map markers render correctly
                 location: workerData.location || userData.location || null,
+                isBusy: busyWorkerIds.has(uid),
                 ...workerData
             };
 
             // Filter by category if requested
             if (category && category !== 'all') {
                 const targetCategory = category.toLowerCase();
-                if (combinedData.category !== targetCategory) {
+                // Match against category OR normalized profession
+                const workerCategory = (combinedData.category || '').toLowerCase();
+                const workerProfession = (combinedData.profession || '').toLowerCase();
+                
+                if (workerCategory !== targetCategory && workerProfession !== targetCategory) {
                     continue;
                 }
             }
@@ -182,6 +202,45 @@ exports.updateWorkerLocation = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating location:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
+
+exports.getWorkerById = async (req, res) => {
+    try {
+        const { uid } = req.params;
+        console.log(`[WORKERS] Fetching detailed profile for: ${uid}`);
+
+        const userDoc = await db.collection('users').doc(uid).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'Worker not found' });
+        }
+
+        const userData = userDoc.data();
+        const workerDoc = await db.collection('workers').doc(uid).get();
+        const workerData = workerDoc.exists ? workerDoc.data() : {};
+
+        const combinedData = {
+            uid,
+            id: uid,
+            name: userData.name || 'Unknown Professional',
+            avatar: userData.profile_pic || userData.avatar || '',
+            is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
+            category: workerData.category || (userData.skills ? userData.skills[0].toLowerCase() : 'general'),
+            rating_avg: workerData.avg_rating || workerData.stats?.avg_rating || 4.5,
+            ...userData,
+            ...workerData,
+            stats: {
+                total_jobs: workerData.stats?.total_jobs || 0,
+                avg_rating: workerData.stats?.avg_rating || 4.5,
+                lifetime_earnings: workerData.stats?.lifetime_earnings || 0,
+                ...workerData.stats
+            }
+        };
+
+        res.status(200).json(combinedData);
+    } catch (error) {
+        console.error('Error in getWorkerById:', error);
         res.status(500).json({ error: error.message });
     }
 };

@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { updateWorker, getWorkers, getWorkerHistory, updateWorkerLocation } = require('../controllers/workers.controller');
+const { updateWorker, getWorkers, getWorkerHistory, updateWorkerLocation, getWorkerById } = require('../controllers/workers.controller');
 
 // @route   POST /api/workers/:uid
 // @desc    Update specific worker data
 router.post('/:uid', (req, res) => updateWorker(req, res));
+
+// @route   GET /api/workers/:uid
+// @desc    Get detailed worker profile
+router.get('/:uid', (req, res) => getWorkerById(req, res));
 
 // @route   GET /api/workers
 // @desc    Smart Matching & AI Recommendation
