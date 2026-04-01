@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -22,6 +22,18 @@ app.get("/", (req, res) => {
 
 app.get("/api", (req, res) => {
     res.json({ message: "BlueBridge API is running!", status: "safe", path: "api" });
+});
+
+app.get("/api/health", (req, res) => {
+    const admin = require('firebase-admin');
+    res.json({
+        status: "ok",
+        version: "2026-04-01-v3",
+        firebase_initialized: admin.apps.length > 0,
+        has_service_account_env: !!process.env.FIREBASE_SERVICE_ACCOUNT,
+        has_project_id: !!process.env.FIREBASE_PROJECT_ID,
+        node_version: process.version
+    });
 });
 
 // Routes
