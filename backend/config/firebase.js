@@ -8,14 +8,23 @@ try {
   // Check for environment variable first (Production/Vercel)
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     try {
-      // Handle potental double-stringified JSON which can happen in some envs
       const rawConfig = process.env.FIREBASE_SERVICE_ACCOUNT;
-      // If it starts with a quote, it might be double-quoted.
-      const jsonString = rawConfig.trim().startsWith('"') && rawConfig.trim().endsWith('"')
-        ? JSON.parse(rawConfig)
-        : rawConfig;
-
-      serviceAccount = typeof jsonString === 'object' ? jsonString : JSON.parse(jsonString);
+      
+      let parsedJson;
+      // If it looks like base64 (no curly braces), decode it first
+      if (!rawConfig.trim().startsWith('{') && !rawConfig.trim().startsWith('"')) {
+          const decoded = Buffer.from(rawConfig, 'base64').toString('utf-8');
+          parsedJson = JSON.parse(decoded);
+          console.log('Successfully decoded Base64 FIREBASE_SERVICE_ACCOUNT');
+      } else {
+          // Standard JSON parsing with double-quote stripping
+          const jsonString = rawConfig.trim().startsWith('"') && rawConfig.trim().endsWith('"')
+            ? JSON.parse(rawConfig)
+            : rawConfig;
+          parsedJson = typeof jsonString === 'object' ? jsonString : JSON.parse(jsonString);
+      }
+      
+      serviceAccount = parsedJson;
       console.log('Successfully loaded serviceAccount from FIREBASE_SERVICE_ACCOUNT environment variable.');
     } catch (e) {
       console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT JSON:', e.message);

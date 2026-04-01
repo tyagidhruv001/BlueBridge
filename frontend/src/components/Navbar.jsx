@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 const Navbar = () => {
@@ -9,24 +9,24 @@ const Navbar = () => {
             <nav className="navbar">
                 <div className="container">
                     <div className="nav-content">
-                        <div className="nav-logo">
+                        <div className="nav-logo" style={{ flex: 1 }}>
                             <span className="logo-icon">🔧</span>
                             <span className="logo-text">BlueBridge</span>
                         </div>
 
-                        <div className="nav-links">
+                        <div className="nav-links" style={{ flex: 2, display: 'flex', justifyContent: 'center', gap: '2rem' }}>
+                            <a href="#">Home</a>
                             <a href="#services">Services</a>
                             <a href="#features">Why Us</a>
                             <a href="#how-it-works">How It Works</a>
-                            <a href="#about">About Us</a>
+                            <a href="#about">About</a>
                         </div>
 
-                        <div className="nav-actions">
-                            <Link to="/auth/role-select?mode=login" className="btn btn-ghost">Login</Link>
-                            <Link to="/auth/role-select?mode=signup" className="btn btn-primary">Get Started</Link>
+                        <div className="nav-actions" style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: '1.2rem', alignItems: 'center' }}>
+                            <Link to="/auth/role-select?mode=signup" className="btn-neon-orange" style={{ padding: '0.6rem 1.5rem', fontSize: '1rem', borderRadius: '30px', fontWeight: '600', textDecoration: 'none' }}>Get Started</Link>
                         </div>
 
-                        <button 
+                        <button
                             className={`mobile-menu-btn ${isMenuOpen ? 'active' : ''}`}
                             onClick={() => setIsMenuOpen(!isMenuOpen)}
                         >

@@ -1058,7 +1058,7 @@ function renderOverview() {
                         
                         <div style="display: flex; gap: 0.5rem; border-top: 1px solid var(--glass-border); padding-top: 1rem;">
                             <button class="btn btn-primary btn-sm" style="flex:1; background: var(--neon-green); color: #000; font-size:0.8rem; padding:0.5rem;" title="Call Professional" onclick="window.open('tel:${activeBooking.workerPhone || ''}')"><i class="fas fa-phone-alt"></i></button>
-                            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem;" title="Chat with Professional" onclick="window.location.href='../../chat/chat.html?bookingId=${activeBooking.id}&receiverName=${encodeURIComponent(activeBooking.worker || activeBooking.workerName || 'Worker')}&receiverId=${activeBooking.workerId || ''}'"><i class="fas fa-comment-dots"></i></button>
+                            <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem;" title="Chat with Professional" onclick="window.location.href='/chat/chat?bookingId=${activeBooking.id}&receiverName=${encodeURIComponent(activeBooking.worker || activeBooking.workerName || 'Worker')}&receiverId=${activeBooking.workerId || ''}'"><i class="fas fa-comment-dots"></i></button>
                             <button class="btn btn-secondary btn-sm" style="flex:1; font-size:0.8rem; padding:0.5rem; color: var(--neon-blue); border-color: var(--neon-blue);" title="Track Worker" onclick="window.openTracking('${activeBooking.id}')"><i class="fas fa-map-marker-alt"></i></button>
                             <button class="btn btn-ghost btn-sm" style="flex:1; color: var(--neon-pink); font-size:0.8rem; padding:0.5rem; border: 1px solid var(--neon-pink);" title="Cancel Booking" onclick="window.cancelBooking('${activeBooking.id}')"><i class="fas fa-times"></i></button>
                         </div>
@@ -1203,7 +1203,7 @@ async function renderBookingsGrid(filterType = 'all') {
             const timeVal = b.time || 'TBD';
             const priceVal = b.price || 350;
 
-            const chatAction = isCancelled ? 'onclick="alert(\'Cannot chat on cancelled bookings.\')"' : `onclick="window.location.href='../../chat/chat.html?bookingId=${b.id}&receiverName=${encodeURIComponent(workerName)}&receiverId=${b.workerId || ''}'"`;
+            const chatAction = isCancelled ? 'onclick="alert(\'Cannot chat on cancelled bookings.\')"' : `onclick="window.location.href='/chat/chat?bookingId=${b.id}&receiverName=${encodeURIComponent(workerName)}&receiverId=${b.workerId || ''}'"`;
             const callAction = isCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : `onclick="window.open('tel:${b.workerPhone || ''}')"`;
 
             const trackStyle = isLive
@@ -1313,8 +1313,8 @@ async function renderWallet() {
                 <h1 style="font-size: 3rem; margin: 1rem 0;">₹${balance.toFixed(2)}</h1>
                 <p style="color: var(--neon-green); font-size: 0.9rem; margin-bottom: 1.5rem;"><i class="fas fa-gift"></i> ${user.reward_points || 0} Reward Points Available</p>
                 <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                    <a href="../wallet/add-money.html" class="btn btn-primary btn-sm" style="text-decoration:none;">Add Money</a>
-                    <a href="../wallet/add-money-demo.html" class="btn btn-secondary btn-sm" style="text-decoration:none;">Demo Top-up</a>
+                    <a href="/wallet/add-money" class="btn btn-primary btn-sm" style="text-decoration:none;">Add Money</a>
+                    <a href="/wallet/add-money-demo" class="btn btn-secondary btn-sm" style="text-decoration:none;">Demo Top-up</a>
                     <button class="btn btn-ghost btn-sm" onclick="showToast('Withdraw feature coming soon!')">Withdraw</button>
                 </div>
             </div>
