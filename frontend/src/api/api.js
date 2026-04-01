@@ -12,7 +12,7 @@ export const API_BASE = isLocal
 export async function apiFetch(path, options = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60-second timeout for heavy AI tasks
-    
+
     try {
         const res = await fetch(API_BASE + path, {
             headers: { "Content-Type": "application/json" },
@@ -22,28 +22,28 @@ export async function apiFetch(path, options = {}) {
         clearTimeout(timeoutId);
 
         if (!res.ok) {
-        let errorMessage = "API Error";
-        try {
-            const data = await res.json();
-            errorMessage = data.error || data.message || JSON.stringify(data);
-        } catch (e) {
+            let errorMessage = "API Error";
             try {
-                const text = await res.text();
-                errorMessage = text || res.statusText;
-            } catch (textError) {
-                errorMessage = res.statusText;
+                const data = await res.json();
+                errorMessage = data.error || data.message || JSON.stringify(data);
+            } catch (e) {
+                try {
+                    const text = await res.text();
+                    errorMessage = text || res.statusText;
+                } catch (textError) {
+                    errorMessage = res.statusText;
+                }
             }
+            throw new Error(errorMessage);
         }
-        throw new Error(errorMessage);
-    }
 
-    return res.json();
-} catch (error) {
-    if (error.name === 'AbortError') {
-        throw new Error('API Request timed out (Backend is slow/offline)');
+        return res.json();
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('API Request timed out (Backend is slow/offline)');
+        }
+        throw error;
     }
-    throw error;
-}
 }
 
 // API object with organized endpoints

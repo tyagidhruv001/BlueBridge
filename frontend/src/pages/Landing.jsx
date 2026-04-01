@@ -16,7 +16,7 @@ const Landing = () => {
             });
         };
         window.addEventListener('mousemove', handleMouseMove);
-        
+
         // Optional: Re-implement any vanilla scroll observers from landing.js here
         const observerOptions = {
             threshold: 0.1,
@@ -60,46 +60,99 @@ const Landing = () => {
             <div className="ambient-orb orb-blue" style={{ bottom: '10%', right: '20%' }}></div>
 
             {/* Hero Section */}
-            <section className="hero">
-                <div className="container relative-z">
-                    <div className="hero-content">
-                        <div className="hero-text" style={{margin: '0 auto', textAlign: 'center'}}>
-                            <div className="hero-badge frosted-badge">
-                                <span>🚀 Trusted by 10,000+ Users</span>
-                            </div>
+            {/* Hero Section */}
+            <section className="hero hyper-hero">
+                <div className="noise-overlay"></div>
+                
+                {/* Dynamic Spotlight mapped to mouse */}
+                <div className="hero-spotlight" style={{ transform: `translate(calc(var(--mx) - 50%), calc(var(--my) - 50%))` }}></div>
 
-                            <h1 className="hero-title gradient-text-silver">
-                                Find Skilled Workers <br/><span className="gradient-text">Instantly.</span>
+                <div className="container relative-z">
+                    <div className="hero-content hero-split-layout">
+                        
+                        <div className="hero-text text-hyper-left">
+                            <h1 className="hero-title giant-title">
+                                <span className="text-outline">FIND SKILLED</span><br/>
+                                <span className="text-solid">WORKERS</span><br/>
+                                <span className="gradient-text hyper-glow-text">INSTANTLY.</span>
                             </h1>
 
-                            <p className="hero-description subtitle" style={{margin: '0 auto 2rem'}}>
-                                Connect with verified plumbers, mechanics, and more.
-                                Get your work done quickly, safely, and affordably.
-                            </p>
+                            <div className="glass-panel description-panel">
+                                <p className="hero-description subtitle">
+                                    Connect with verified plumbers, mechanics, and more. 
+                                    Get your work done quickly, safely, and affordably.
+                                </p>
+                            </div>
 
-                            <div className="hero-actions" style={{justifyContent: 'center'}}>
-                                <Link to="/auth/role-select?mode=signup" className="btn-neon-blue">
-                                    <span>Get Started</span>
+                            <div className="hero-actions hyper-actions">
+                                <Link to="/auth/role-select?mode=signup" className="btn-hyper-glow">
+                                    <span className="btn-text">Get Started</span>
+                                    <div className="glow-ring"></div>
                                 </Link>
-                                <a href="#how-it-works" className="btn-glass">
+                                <a href="#how-it-works" className="btn-glass hyper-glass-btn">
                                     <span>Learn More</span>
                                 </a>
                             </div>
+                        </div>
 
-                            <div className="hero-stats" style={{justifyContent: 'center'}}>
-                                <div className="stat-item neon-stat">
-                                    <div className="stat-value text-blue">10K+</div>
-                                    <div className="stat-label">Active Workers</div>
-                                </div>
-                                <div className="stat-item neon-stat">
-                                    <div className="stat-value text-purple">50K+</div>
-                                    <div className="stat-label">Jobs Completed</div>
-                                </div>
-                                <div className="stat-item neon-stat">
-                                    <div className="stat-value text-orange">4.8★</div>
-                                    <div className="stat-label">Average Rating</div>
-                                </div>
+                        <div className="hero-visual parallax-constellation">
+                            {/* Floating Parallax Chips mapped to mouse inversion */}
+                            <div className="parallax-chip chip-1" style={{ transform: `translate(calc(var(--mx) * -0.5), calc(var(--my) * -0.5))` }}>
+                                <span className="chip-icon glass-icon">🔧</span>
+                                <span className="chip-text">Master Mechanic</span>
                             </div>
+                            
+                            <div className="parallax-chip chip-2" style={{ transform: `translate(calc(var(--mx) * 0.8), calc(var(--my) * 0.3))` }}>
+                                <span className="chip-icon glass-icon">🚰</span>
+                                <span className="chip-text">Expert Plumber</span>
+                            </div>
+
+                            <div className="parallax-chip chip-3" style={{ transform: `translate(calc(var(--mx) * -0.3), calc(var(--my) * 0.9))` }}>
+                                <span className="chip-icon glass-icon">⚡</span>
+                                <span className="chip-text">Electrician</span>
+                            </div>
+
+                            <div className="parallax-chip chip-4" style={{ transform: `translate(calc(var(--mx) * 0.4), calc(var(--my) * -0.8))` }}>
+                                <span className="chip-icon glass-icon">🧹</span>
+                                <span className="chip-text">Cleaning Pro</span>
+                            </div>
+
+                            {/* Left-side Constellation Chips */}
+                            <div className="parallax-chip chip-5" style={{ transform: `translate(calc(var(--mx) * -0.4), calc(var(--my) * 0.6))` }}>
+                                <span className="chip-icon glass-icon">🛠️</span>
+                                <span className="chip-text">Handyman</span>
+                            </div>
+
+                            <div className="parallax-chip chip-6" style={{ transform: `translate(calc(var(--mx) * 0.7), calc(var(--my) * -0.4))` }}>
+                                <span className="chip-icon glass-icon">👷</span>
+                                <span className="chip-text">Construction</span>
+                            </div>
+
+                            <div className="parallax-chip chip-7" style={{ transform: `translate(calc(var(--mx) * -0.2), calc(var(--my) * 0.8))` }}>
+                                <span className="chip-icon glass-icon">🌿</span>
+                                <span className="chip-text">Landscaper</span>
+                            </div>
+
+                            <div className="parallax-chip chip-8" style={{ transform: `translate(calc(var(--mx) * 0.5), calc(var(--my) * 0.7))` }}>
+                                <span className="chip-icon glass-icon">🎨</span>
+                                <span className="chip-text">Painter</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Clustered Glass Pills Stats */}
+                    <div className="hero-stats hyper-stats">
+                        <div className="stat-pill">
+                            <div className="stat-value">10K+</div>
+                            <div className="stat-label">Active Workers</div>
+                        </div>
+                        <div className="stat-pill">
+                            <div className="stat-value">50K+</div>
+                            <div className="stat-label">Jobs Completed</div>
+                        </div>
+                        <div className="stat-pill highlight-pill">
+                            <div className="stat-value">4.8★</div>
+                            <div className="stat-label">Average Rating</div>
                         </div>
                     </div>
                 </div>
@@ -124,9 +177,9 @@ const Landing = () => {
                                 </div>
                                 <h2>Mechanic</h2>
                                 <p>Vehicle repairs, diagnostics, and routine maintenance right at your doorstep.</p>
-                                <Link to="/auth/role-select?mode=signup" className="action-indicator" style={{textDecoration: 'none'}}>
+                                <Link to="/auth/role-select?mode=signup" className="action-indicator" style={{ textDecoration: 'none' }}>
                                     <span>Book Now</span>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                 </Link>
                             </div>
                         </div>
@@ -141,9 +194,9 @@ const Landing = () => {
                                 </div>
                                 <h2>Plumber</h2>
                                 <p>Expert pipe repairs, installations, and emergency leak fixes.</p>
-                                <Link to="/auth/role-select?mode=signup" className="action-indicator" style={{textDecoration: 'none'}}>
+                                <Link to="/auth/role-select?mode=signup" className="action-indicator" style={{ textDecoration: 'none' }}>
                                     <span>Book Now</span>
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                                 </Link>
                             </div>
                         </div>
@@ -275,11 +328,11 @@ const Landing = () => {
             </section>
 
             {/* CTA Section */}
-            <section className="cta ultra-glass relative-z" style={{maxWidth: '1200px', margin: '4rem auto', textAlign: 'center'}}>
+            <section className="cta ultra-glass relative-z" style={{ maxWidth: '1200px', margin: '4rem auto', textAlign: 'center' }}>
                 <div className="container">
                     <div className="cta-content">
                         <h2 className="gradient-text-silver">Ready to Get Started?</h2>
-                        <p className="subtitle" style={{marginBottom: '2rem'}}>Join thousands of satisfied customers and workers</p>
+                        <p className="subtitle" style={{ marginBottom: '2rem' }}>Join thousands of satisfied customers and workers</p>
                         <div className="cta-buttons" style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
                             <Link to="/auth/role-select?mode=signup" className="btn-neon-blue">I'm a Customer</Link>
                             <Link to="/auth/role-select?mode=signup" className="btn-neon-orange">I'm a Worker</Link>
