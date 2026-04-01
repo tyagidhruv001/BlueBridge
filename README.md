@@ -1,68 +1,126 @@
-🛠️ BlueBridge – A Modern Home Services Platform
+# 🛠️ BlueBridge – A Modern Home Services Platform
 
 BlueBridge is a scalable, technology-driven platform designed to seamlessly connect customers with verified skilled professionals for on-demand home services. The platform emphasizes trust, efficiency, and user-centric design, delivering a reliable and transparent service experience.
 
-🚀 Overview
+---
+
+## 🚀 Overview
 
 BlueBridge addresses the fragmented nature of the home services market by providing a centralized, intelligent ecosystem where customers can easily discover, book, and manage services, while service professionals gain access to consistent job opportunities and streamlined operations.
 
-✨ Key Features
+---
 
-🏠 Customer Experience
+## ✨ Key Features
 
-• Multi-Service Marketplace
-Access 15+ service categories including plumbing, electrical work, cleaning, carpentry, and more.
+### 🏠 Customer Experience
 
-• Intelligent Worker Matching
-Algorithm-driven recommendations based on proximity, ratings, and availability.
+- **Multi-Service Marketplace** — Access 15+ service categories including plumbing, electrical work, cleaning, carpentry, and more.
+- **Intelligent Worker Matching** — Algorithm-driven recommendations based on proximity, ratings, and availability.
+- **Real-Time Service Tracking** — Live GPS-based tracking enables users to monitor service provider arrival in real time.
+- **Secure Digital Wallet** — Integrated payment system ensuring fast, secure, and cashless transactions.
+- **AI-Powered Assistant** — Context-aware chatbot for booking assistance, query resolution, and navigation support.
+- **Transparent Ratings & Reviews** — Verified feedback system to ensure quality and accountability.
 
-• Real-Time Service Tracking
-Live GPS-based tracking enables users to monitor service provider arrival in real time.
+### 👷 Service Professional Experience
 
-• Secure Digital Wallet
-Integrated payment system ensuring fast, secure, and cashless transactions.
+- **Streamlined Onboarding & Verification** — AI-assisted document verification (Aadhaar, PAN, Driving License) for faster onboarding.
+- **Smart Job Management Dashboard** — Manage incoming requests, track ongoing jobs, and schedule future bookings efficiently.
+- **Earnings & Financial Insights** — Comprehensive earnings dashboard with transaction history and wallet integration.
 
-• AI-Powered Assistant
-Context-aware chatbot for booking assistance, query resolution, and navigation support.
+---
 
-• Transparent Ratings & Reviews
-Verified feedback system to ensure quality and accountability.
+## 🧰 Tech Stack
 
-👷 Service Professional Experience
+### 🖥️ Frontend
 
-• Streamlined Onboarding & Verification
-AI-assisted document verification (Aadhaar, PAN, Driving License) for faster onboarding.
+| Technology | Purpose |
+|---|---|
+| **React + JSX** | Core UI framework for page components (Landing, Auth, Dashboards) |
+| **Vite** | Build tool & dev server — fast HMR, production bundling |
+| **Vanilla CSS** | Custom design system — glassmorphism, dark theme, animations |
+| **Leaflet.js** | Interactive maps for real-time worker location tracking |
+| **HTML + Vanilla JS** | Booking and customer dashboard pages (lightweight, no framework overhead) |
+| **Firebase JS SDK** | Client-side auth & Firestore real-time listeners |
+| **Browser Geolocation API** | GPS coordinates for customer location on booking |
+| **Cloudflare Pages** | Frontend hosting & global CDN |
 
-• Smart Job Management Dashboard
-Manage incoming requests, track ongoing jobs, and schedule future bookings efficiently.
+### ⚙️ Backend
 
-• Earnings & Financial Insights
-Comprehensive earnings dashboard with transaction history and wallet integration.
+| Technology | Purpose |
+|---|---|
+| **Node.js + Express** | REST API server |
+| **Firebase Admin SDK** | Server-side Firestore reads/writes with full admin privileges |
+| **Firestore (NoSQL)** | Primary database — users, workers, jobs, bookings, transactions |
+| **Firebase Authentication** | User signup, login, and role-based access (customer / worker) |
+| **Google Gemini AI** | AI chat assistant embedded in customer dashboard |
+| **Razorpay** | Payment processing & wallet top-ups |
+| **ngeohash** | Geohash encoding for proximity-based worker queries |
+| **Joi** | Request body validation |
+| **dotenv** | Environment variable management |
+| **CORS** | Cross-origin request handling between Cloudflare frontend & Railway backend |
+| **Railway** | Backend cloud hosting with auto-deploy from GitHub |
 
-🏗️ System Architecture
+### 🗄️ Data & Real-time
 
-BlueBridge follows a modular full-stack architecture:
+| Technology | Purpose |
+|---|---|
+| **Firestore** | All persistent data — users, jobs, bookings, chats, location history |
+| **Firestore Real-time Listeners** | Live job status updates pushed to worker/customer dashboards |
+| **Polling (`setInterval`)** | Fallback mechanism for worker location updates every 10s |
 
-• Frontend
-Built using HTML, CSS, JavaScript, and Vite to deliver a fast and responsive user interface.
+### 🔐 Auth & Security
 
-• Backend
-Developed using Node.js and Express, with Firebase integration for authentication, database, and real-time features.
+| Technology | Purpose |
+|---|---|
+| **Firebase Authentication** | Email/password login, session token management |
+| **Firebase Admin SDK** | Server-side token verification & privileged DB access |
+| **Environment Variables** | Secrets (API keys, Firebase credentials) stored securely via Railway/Cloudflare env vars — never committed to git |
+
+### 🚀 DevOps / Deployment
+
+| Technology | Purpose |
+|---|---|
+| **GitHub** | Version control + webhook trigger for auto-deploys |
+| **Cloudflare Pages** | Frontend CDN hosting, auto-build via `npm run build` on push to `main` |
+| **Railway** | Backend Node.js hosting, auto-deploy on git push |
+
+### 📡 Architecture Overview
+
+```
+Browser
+  └── Cloudflare Pages  (React + Vite frontend)
+        └── HTTPS API calls
+              └── Railway  (Express backend)
+                    ├── Firebase Admin  ↔  Firestore DB
+                    ├── Google Gemini AI  (chat)
+                    └── Razorpay  (payments)
+```
+
+---
 
 ## 📂 Folder Structure
 
 ```text
 BlueBridge/
 ├── backend/                  # Node.js + Express backend application
-│   ├── config/               # Configuration files
-│   ├── src/                  # Backend source code (routes, controllers, etc.)
-│   ├── clear-db.js           # Database cleanup utility
+│   ├── config/               # Firebase & environment configuration
+│   ├── src/
+│   │   ├── controllers/      # Route handler logic
+│   │   ├── routes/           # Express route definitions
+│   │   ├── middlewares/      # Auth, error handling
+│   │   └── utils/            # Shared utilities (location, errors)
+│   ├── railway.json          # Railway deployment config
 │   └── package.json          # Backend dependencies and scripts
 │
 ├── frontend/                 # React + Vite frontend application
 │   ├── public/               # Static assets
-│   ├── src/                  # React source code (components, pages, assets)
-│   ├── index.html            # Main HTML entry point
+│   ├── src/
+│   │   ├── api/              # Centralized API client
+│   │   ├── components/       # Reusable React components
+│   │   ├── pages/            # Route-level pages (auth, dashboard, booking)
+│   │   ├── styles/           # Global CSS design system
+│   │   └── utils/            # Frontend utilities & Firebase config
+│   ├── dist/                 # Production build output (committed for Cloudflare)
 │   ├── vite.config.js        # Vite bundler configuration
 │   └── package.json          # Frontend dependencies and scripts
 │
@@ -70,48 +128,63 @@ BlueBridge/
 └── README.md                 # Project documentation
 ```
 
+---
+
 ## ⚙️ Getting Started
 
-Prerequisites include Node.js (v20 or higher), a configured Firebase project, and API keys such as Razorpay and Google Generative AI.
+**Prerequisites:** Node.js v20+, a configured Firebase project, and API keys for Razorpay and Google Gemini AI.
 
 ### 1. Backend Setup
-
-Open a terminal and configure the backend:
 
 ```bash
 cd backend
 npm install
 ```
 
-Start the backend server (runs on port defined in your environment):
+Create a `.env` file (see `.env.example`):
+```env
+PORT=5000
+FIREBASE_SERVICE_ACCOUNT=<base64 encoded serviceAccountKey.json>
+FIREBASE_PROJECT_ID=your_project_id
+GEMINI_API_KEY=your_gemini_key
+RAZORPAY_KEY_ID=your_razorpay_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+```
+
+Start the backend:
 ```bash
-npm run dev    # Starts with nodemon for development
-# or
-npm start      # Standard start
+npm run dev    # Development (nodemon)
+npm start      # Production
 ```
 
 ### 2. Frontend Setup
 
-Open a separate terminal and configure the frontend:
-
 ```bash
 cd frontend
 npm install
+npm run dev    # Dev server on http://localhost:3000
 ```
 
-Start the frontend development server:
+Build for production:
 ```bash
-npm run dev
+npm run build  # Output goes to frontend/dist/
 ```
 
-🧪 Testing & Demo Modes
+---
+
+## 🧪 Testing & Demo Modes
 
 BlueBridge includes demo environments to test features without external integrations:
 
-• Demo Wallet Interface
-• GPS Tracking Simulator
-• AI-Based Identity Verification Test
+- **Demo Wallet Interface** — Test wallet top-ups and payment flows
+- **GPS Tracking Simulator** — Simulate worker location updates on the map
+- **AI-Based Identity Verification Test** — Test document verification pipeline
 
-📈 Impact
+---
 
-BlueBridge aims to empower blue-collar workers with better job visibility and income stability, enhance customer convenience through reliable and transparent services, and digitize the informal service sector using scalable technology.
+## 📈 Impact
+
+BlueBridge aims to:
+- Empower blue-collar workers with better job visibility and income stability
+- Enhance customer convenience through reliable and transparent services
+- Digitize the informal service sector using scalable, modern technology
