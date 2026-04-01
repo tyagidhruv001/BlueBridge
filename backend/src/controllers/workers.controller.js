@@ -98,7 +98,7 @@ exports.getWorkers = async (req, res) => {
                     name: userData.name || 'Unknown Professional',
                     avatar: userData.profile_pic || userData.avatar || '',
                     is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-                    category: workerData.category || (userData.skills && userData.skills.length > 0 ? userData.skills[0].toLowerCase() : 'general'),
+
                     rating_avg: workerData.avg_rating || (workerData.stats ? workerData.stats.avg_rating : 4.5) || 4.5,
                     experience_years: workerData.experience_years || 0,
                     base_price: workerData.base_price || 0,
@@ -226,7 +226,7 @@ exports.getWorkerById = async (req, res) => {
             name: userData.name || 'Unknown Professional',
             avatar: userData.profile_pic || userData.avatar || '',
             is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-            category: workerData.category || (userData.skills && userData.skills.length > 0 ? userData.skills[0].toLowerCase() : 'general'),
+
             rating_avg: workerData.avg_rating || workerData.stats?.avg_rating || 4.5,
             ...userData,
             ...workerData,
