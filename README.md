@@ -176,9 +176,9 @@ npm run build  # Output goes to frontend/dist/
 
 BlueBridge includes demo environments to test features without external integrations:
 
-- **Demo Wallet Interface** — Test wallet top-ups and payment flows
-- **GPS Tracking Simulator** — Simulate worker location updates on the map
-- **AI-Based Identity Verification Test** — Test document verification pipeline
+- **AI Chatbot Assistant** — Powered by Google Gemini, providing real-time assistance for bookings, service queries, and platform navigation.
+- **GPS Tracking Simulator** — Simulate worker location updates on the map for real-time monitoring tests.
+- **AI-Based Identity Verification Test** — Automated document verification pipeline for faster professional onboarding.
 
 ---
 
