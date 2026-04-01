@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    BlueBridge - CUSTOMER DASHBOARD PREMIUM THEME
    Modern Dark Mode with Neon Accents & Glassmorphism
    ========================================================================== */
@@ -1325,7 +1325,6 @@
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     position: relative;
-    overflow: hidden;
     display: flex;
     gap: 1rem;
     align-items: flex-start;

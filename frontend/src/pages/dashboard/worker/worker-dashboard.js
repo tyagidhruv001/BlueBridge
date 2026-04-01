@@ -1412,6 +1412,7 @@ window.saveProfile = async function () {
     const lng = getVal('editLocationLng');
     const location = (lat && lng) ? { lat: parseFloat(lat), lng: parseFloat(lng) } : locationText;
 
+    const profession = getVal('editProfession');
     const skillsInput = document.getElementById('editSkills');
     const skills = skillsInput ? skillsInput.value.split(',').map(s => s.trim()).filter(s => s) : [];
 
@@ -1449,6 +1450,7 @@ window.saveProfile = async function () {
     const profile = Storage.get('BlueBridge_user_profile') || {};
     profile.location = location;
     profile.bio = bio;
+    profile.profession = profession;
     profile.skills = skills;
     profile.qualifications = qualifications;
     profile.experience = experience;
@@ -1740,7 +1742,10 @@ function getProfilePage() {
       `<span class="badge badge-success" style="backdrop-filter: blur(4px); padding: 0.25rem 0.7rem; font-size: 0.75rem; letter-spacing: 0.5px; border-radius: 20px;">Verified Pro</span>` :
       `<span class="badge" style="background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 0.25rem 0.7rem; font-size: 0.75rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1);">Unverified</span>`}
                 <span style="color: rgba(255,255,255,0.7); display:flex; align-items:center; gap:0.5rem; font-size: 1rem;">
-                    <i class="fas fa-map-marker-alt" style="color: var(--neon-pink);"></i> ${profile.location || 'Location not set'}
+                    <i class="fas fa-map-marker-alt" style="color: var(--neon-pink);"></i> 
+                    ${typeof profile.location === 'object' && profile.location?.lat 
+                        ? `${profile.location.lat.toFixed(4)}, ${profile.location.lng.toFixed(4)}` 
+                        : (profile.location || 'Location not set')}
                 </span>
             </div>
 
@@ -1832,13 +1837,33 @@ function getProfilePage() {
         </div>
         <div style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div class="info-group">
-              <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.75rem; margin-bottom:0.4rem; letter-spacing:1px; font-weight: 600;">SKILLS</label>
+              <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.75rem; margin-bottom:0.4rem; letter-spacing:1px; font-weight: 600;">PROFESSION</label>
               ${isEditingProfile
-      ? `<input type="text" id="editSkills" class="form-control" value="${(profile.skills || []).join(', ')}" placeholder="Comma separated skills" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 1rem; border-radius: 12px;">`
+      ? `<select id="editProfession" class="form-control" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 1rem; border-radius: 12px; width: 100%;">
+                     <option value="" disabled ${!profile.profession ? 'selected' : ''}>Select your profession</option>
+                     <option value="Plumbing" ${profile.profession === 'Plumbing' ? 'selected' : ''}>Plumbing</option>
+                     <option value="Electrical & Appliances" ${profile.profession === 'Electrical & Appliances' ? 'selected' : ''}>Electrical & Appliances</option>
+                     <option value="Carpentry" ${profile.profession === 'Carpentry' ? 'selected' : ''}>Carpentry</option>
+                     <option value="House Cleaning" ${profile.profession === 'House Cleaning' ? 'selected' : ''}>House Cleaning</option>
+                     <option value="Painting & Design" ${profile.profession === 'Painting & Design' ? 'selected' : ''}>Painting & Design</option>
+                     <option value="Salon & Wellness" ${profile.profession === 'Salon & Wellness' ? 'selected' : ''}>Salon & Wellness</option>
+                     <option value="Gardening" ${profile.profession === 'Gardening' ? 'selected' : ''}>Gardening</option>
+                     <option value="Automotive Mechanic" ${profile.profession === 'Automotive Mechanic' ? 'selected' : ''}>Automotive Mechanic</option>
+                     <option value="Moving & Logistics" ${profile.profession === 'Moving & Logistics' ? 'selected' : ''}>Moving & Logistics</option>
+                   </select>`
+      : `<div class="profession-tag" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <span class="badge" style="background: rgba(0, 210, 255, 0.1); border: 1px solid rgba(0, 210, 255, 0.3); color: var(--neon-blue); padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600;">${profile.profession || 'General Professional'}</span>
+                   </div>`
+    }
+            </div>
+            <div class="info-group">
+              <label style="display:block; color:rgba(255,255,255,0.4); font-size:0.75rem; margin-bottom:0.4rem; letter-spacing:1px; font-weight: 600;">SPECIFIC SKILLS (OPTIONAL)</label>
+              ${isEditingProfile
+      ? `<input type="text" id="editSkills" class="form-control" value="${(profile.skills || []).join(', ')}" placeholder="e.g. Pipe fitting, Welding, Leak repair" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; padding: 1rem; border-radius: 12px;">`
       : `<div class="skills-tags" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    ${(profile.skills || []).map(skill => `
+                    ${(profile.skills || []).length > 0 ? (profile.skills || []).map(skill => `
                       <span class="badge" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; padding: 0.5rem 1rem; border-radius: 8px;">${skill}</span>
-                    `).join('')}
+                    `).join('') : '<span style="color:rgba(255,255,255,0.4); font-style:italic; font-size:0.9rem;">No specific skills listed.</span>'}
                    </div>`
     }
             </div>
@@ -2217,7 +2242,6 @@ function getJobRequestsPage() {
 
 
 // ============================================
-// ACTIVE JOBS PAGE
 // ============================================
 
 function getActiveJobsPage() {
@@ -2236,12 +2260,46 @@ function getActiveJobsPage() {
       </div>
     </div>
 
+    <!-- Premium Animated Map Section -->
+    <div id="active-jobs-map-container" style="position: relative; margin-bottom: 2rem;">
+        <div id="active-jobs-map">
+            <div class="map-loading-overlay">
+                <i class="fas fa-satellite fa-spin" style="font-size: 2rem; color: #00d2ff;"></i>
+                <p style="font-weight: 600; letter-spacing: 1px;">INITIALIZING GPS UPLINK...</p>
+            </div>
+        </div>
+        
+        <!-- Map Floating Info (Premium) -->
+        <div class="map-float-card" id="map-tracking-info" style="display: none;">
+            <div class="map-float-label">SIGNAL: ENCRYPTED</div>
+            <div class="map-float-value" id="tracked-customer-name">--</div>
+            <div style="margin-top: 0.5rem; display: flex; gap: 1rem;">
+                <div>
+                    <div class="map-float-label">Est. Distance</div>
+                    <div class="map-float-value" id="tracked-distance" style="font-size: 0.9rem;">-- km</div>
+                </div>
+                <div>
+                    <div class="map-float-label">Tracking Mode</div>
+                    <div class="map-float-value" style="font-size: 0.9rem; color: #4ade80;">ACTIVE</div>
+                </div>
+            </div>
+            
+            <button class="map-directions-btn" id="map-get-directions" onclick="window.openDirections()" style="margin-top: 1rem; width: 100%;">
+                <i class="fas fa-directions"></i> Get Directions (Google Maps)
+            </button>
+        </div>
+        
+        <button class="map-center-btn" onclick="window.recenterMap()" title="Recenter Map">
+            <i class="fas fa-crosshairs"></i>
+        </button>
+    </div>
+
     <div class="jobs-list" id="activeJobsList">
       <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 3rem 1.5rem; text-align:center; gap:1.25rem;">
         <div style="width:80px; height:80px; border-radius:50%; background: linear-gradient(135deg, rgba(0,210,255,0.12), rgba(0,210,255,0.04)); border: 1px solid rgba(0,210,255,0.2); display:flex; align-items:center; justify-content:center;">
           <i class="fas fa-spinner fa-spin" style="font-size:1.8rem; color: rgba(0,210,255,0.7);"></i>
         </div>
-        <p style="margin:0; font-size:0.9rem; color:var(--text-tertiary);">Loading active jobs...</p>
+        <p style="margin:0; font-size:0.9rem; color:var(--text-tertiary);">Syncing live data streams...</p>
       </div>
     </div>
   `;
@@ -2729,79 +2787,102 @@ window.fetchAndRenderJobRequests = fetchAndRenderJobRequests;
 window.fetchAndRenderActiveJobs = fetchAndRenderActiveJobs;
 window.fetchAndRenderJobHistory = fetchAndRenderJobHistory;
 
-// --- GLASS COCKPIT: LIVE TRACKING & MISSION RADAR ---
-let workerLiveMap = null;
-let workerLiveMarker = null;
+// --- MISSION CONTROL: UNIFIED LOCATION ENGINE (HIGH PERFORMANCE) ---
+window.locationEngine = {
+    watchId: null,
+    lastUpdate: 0,
+    lastCoords: null,
+    minDistance: 5, // Meters
+    minInterval: 10000, // 10 seconds
 
-window.startGPS = function () {
-  if (!navigator.geolocation) {
-    console.warn('Geolocation not supported');
-    return;
-  }
+    start() {
+        if (!navigator.geolocation || this.watchId) return;
+        
+        console.log('🚀 [LOCATION ENGINE] Ignition. Starting High-Accuracy Stream...');
+        this.watchId = navigator.geolocation.watchPosition(
+            (pos) => this.handleUpdate(pos),
+            (err) => console.warn('❌ [LOCATION ENGINE] Signal Interrupted:', err.message),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+        );
+    },
 
-  if (globalWorkerWatchId) navigator.geolocation.clearWatch(globalWorkerWatchId);
-
-  const btn = document.getElementById('startGPSBtn');
-  if (btn) btn.style.display = 'none';
-  const indicator = document.getElementById('liveTrackingIndicator');
-  if (indicator) indicator.style.display = 'flex';
-
-  console.log('🛰️ [WORKER] Starting Global Live Tracking Watch...');
-
-  globalWorkerWatchId = navigator.geolocation.watchPosition(
-    (position) => {
-      const { latitude, longitude, accuracy } = position.coords;
-      console.log(`📍 [WORKER] GPS Update: ${latitude}, ${longitude}`);
-
-      // 1. Update Worker Dashboard Map
-      const mapContainer = document.getElementById('worker-live-map');
-      if (mapContainer && typeof L !== 'undefined') {
-        if (!workerLiveMap) {
-          mapContainer.innerHTML = '';
-          workerLiveMap = L.map('worker-live-map', { zoomControl: false, attributionControl: false }).setView([latitude, longitude], 15);
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(workerLiveMap);
-          workerLiveMarker = L.circleMarker([latitude, longitude], {
-            radius: 8, color: '#39ff14', fillColor: '#39ff14', fillOpacity: 0.8, className: 'gps-pulse-customer'
-          }).addTo(workerLiveMap);
-        } else {
-          workerLiveMarker.setLatLng([latitude, longitude]);
-          workerLiveMap.panTo([latitude, longitude]);
+    stop() {
+        if (this.watchId) {
+            navigator.geolocation.clearWatch(this.watchId);
+            this.watchId = null;
+            console.log('🛑 [LOCATION ENGINE] Stream Terminated.');
         }
-      }
+    },
 
-      // 2. Push to Active Bookings in Firestore via standard schema
-      if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
-        window.activeBookingIds.forEach(bookingId => {
-          console.log(`🛰️ [WORKER] Broadcasting Signal for Job: ${bookingId}`);
-          try {
-            const user = Storage.get('BlueBridge_user');
-            setDoc(doc(db, 'locations', bookingId), {
-              workerLocation: { lat: latitude, lng: longitude, timestamp: new Date().toISOString() },
-              workerId: user?.uid || 'anonymous'
+    handleUpdate(position) {
+        const { latitude: lat, longitude: lng } = position.coords;
+        const now = Date.now();
+
+        // 1. Instant UI Feedback (Local Dashboard Map)
+        if (typeof window.updateWorkerMarker === 'function') {
+            window.updateWorkerMarker(lat, lng);
+        }
+
+        // 2. Smart Sync Throttling
+        const timeSinceLast = now - this.lastUpdate;
+        const distanceMoved = this.lastCoords ? this.calculateDistance(lat, lng, this.lastCoords.lat, this.lastCoords.lng) : 999;
+
+        if (distanceMoved > this.minDistance || timeSinceLast > this.minInterval) {
+            this.broadcast(lat, lng);
+            this.lastUpdate = now;
+            this.lastCoords = { lat, lng };
+        }
+    },
+
+    async broadcast(lat, lng) {
+        const user = Storage.get('BlueBridge_user');
+        if (!user || !user.uid) return;
+
+        // A. Update Worker Profile (Global Discovery)
+        try {
+            await setDoc(doc(db, 'workers', user.uid), {
+                location: { lat, lng, updatedAt: new Date().toISOString() },
+                is_online: true
             }, { merge: true });
-          } catch (e) { console.warn('Silent sync failed for job:', bookingId, e); }
-        });
-      }
+        } catch (e) { console.warn('Profile sync failed'); }
+
+        // B. Update Active Job Signals (Customer Dashboard)
+        if (Array.isArray(window.activeBookingIds) && window.activeBookingIds.length > 0) {
+            window.activeBookingIds.forEach(bookingId => {
+                try {
+                    setDoc(doc(db, 'locations', bookingId), {
+                        workerLocation: { lat, lng, timestamp: new Date().toISOString() }
+                    }, { merge: true });
+                } catch (e) {}
+            });
+        }
     },
-    (error) => {
-      console.warn('❌ [WORKER] Watch Error:', error.message);
-      if (indicator) indicator.style.display = 'none';
-      if (btn) btn.style.display = 'flex';
-    },
-    { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
-  );
+
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // metres
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
 };
-window.startGlobalLocationWatch = window.startGPS;
+
+// Global Initialization Aliases
+window.startGPS = () => window.locationEngine.start();
+window.startGlobalLocationWatch = () => window.locationEngine.start();
 
 async function initGlobalBookingSync() {
-  console.log('📡 [WORKER SYNC] Initializing Global Job Signal...');
+  console.log('📡 [WORKER SYNC] Scanning for active mission signals...');
   const user = Storage.get('BlueBridge_user');
   if (!user) return;
 
   try {
     const apiBase = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:5000/api' : '/api';
-
-    // Initial fetch to get active jobs
     const res = await fetch(`${apiBase}/bookings?user_id=${user.uid}&role=worker`);
     const jobs = await res.json();
 
@@ -2810,17 +2891,13 @@ async function initGlobalBookingSync() {
       .filter(j => activeStatuses.includes((j.status || '').toLowerCase()))
       .map(j => j.id);
 
-    console.log(`📡 [WORKER SYNC] Found ${window.activeBookingIds.length} active jobs to broadcast.`);
-
     if (window.activeBookingIds.length > 0) {
-      startGlobalLocationWatch();
+        window.locationEngine.start();
     }
   } catch (err) {
-    console.warn('📡 [WORKER SYNC] Initial fetch failed:', err);
+    console.warn('📡 [WORKER SYNC] Mission scan failed:', err);
   }
 }
-
-
 
 // ============================================
 // GLOBAL EXPOSURE (For cross-script access)
@@ -2844,3 +2921,260 @@ function waitForDOMAndInit() {
 }
 
 waitForDOMAndInit();
+
+// ============================================
+// MISSION CONTROL: PREMIUM ANIMATED MAP ENGINE
+// ============================================
+
+let activeJobsMap = null;
+let activeJobsWorkerMarker = null;
+let activeJobsCustomerMarkers = {};
+let activeJobsPolylines = {};
+let activeJobsUnsubscribes = [];
+
+window.initActiveJobsMap = async function() {
+    console.log('📡 [MISSION CONTROL] Initializing Premium Animated Map...');
+    const mapContainer = document.getElementById('active-jobs-map');
+    if (!mapContainer || typeof L === 'undefined') {
+        console.warn('Map container or Leaflet not found');
+        return;
+    }
+
+    // 1. Cleanup existing map instance if any
+    window.cleanupActiveJobsMap();
+
+    // 2. Initialize Map
+    activeJobsMap = L.map('active-jobs-map', {
+        zoomControl: false,
+        attributionControl: false
+    }).setView([28.6139, 77.2090], 13); // Default to Delhi
+
+    // 3. Add Premium Dark Matter Tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+    }).addTo(activeJobsMap);
+
+    // Add zoom control to bottom right
+    L.control.zoom({ position: 'bottomleft' }).addTo(activeJobsMap);
+
+    const user = Storage.get('BlueBridge_user');
+    if (!user || !user.uid) return;
+
+    // 4. Initial Position & Location Engine Sync
+    // We no longer listen to our own Firestore document to avoid lag.
+    // Instead, we use the LocationEngine for real-time local updates.
+    if (window.locationEngine && window.locationEngine.lastCoords) {
+        const { lat, lng } = window.locationEngine.lastCoords;
+        updateWorkerMarker(lat, lng);
+        const overlay = document.querySelector('.map-loading-overlay');
+        if (overlay) overlay.style.display = 'none';
+        activeJobsMap.setView([lat, lng], 13);
+    } else {
+        // Fallback: Check Firestore once for the very first load
+        const workerRef = doc(db, 'workers', user.uid);
+        getDoc(workerRef).then(snap => {
+            const data = snap.data();
+            if (data && data.location) {
+                updateWorkerMarker(data.location.lat, data.location.lng);
+                const overlay = document.querySelector('.map-loading-overlay');
+                if (overlay) overlay.style.display = 'none';
+            }
+        });
+    }
+
+    // Ensure the engine is running
+    if (window.locationEngine) {
+        window.locationEngine.start();
+    }
+
+    // 5. Active Jobs Listener (From Firebase)
+    const qActive = query(
+        collection(db, 'jobs'), 
+        where('workerId', 'in', [user.uid, 'true']), // Handle variations
+        where('status', 'in', ['assigned', 'in_progress', 'accepted', 'running', 'on the way'])
+    );
+
+    const unsubJobs = onSnapshot(qActive, (snapshot) => {
+        const activeJobIds = [];
+        snapshot.forEach(doc => {
+            const job = { id: doc.id, ...doc.data() };
+            if (job.location && job.location.lat && job.location.lng) {
+                updateCustomerMarker(job);
+                activeJobIds.push(job.id);
+            }
+        });
+
+        // Cleanup markers for jobs no longer active
+        Object.keys(activeJobsCustomerMarkers).forEach(jobId => {
+            if (!activeJobIds.includes(jobId)) {
+                removeCustomerMarker(jobId);
+            }
+        });
+        
+        // Update Info Card if we have exactly one active job
+        updateMapInfoCard(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    activeJobsUnsubscribes.push(unsubJobs);
+
+    console.log('📡 [MISSION CONTROL] Listeners Active.');
+};
+
+function updateWorkerMarker(lat, lng) {
+    if (!activeJobsMap) return;
+
+    const workerIcon = L.divIcon({
+        className: 'custom-worker-icon',
+        html: '<div class="worker-marker-icon"><div class="worker-marker-pulse"></div></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+
+    if (!activeJobsWorkerMarker) {
+        activeJobsWorkerMarker = L.marker([lat, lng], { icon: workerIcon }).addTo(activeJobsMap);
+        activeJobsMap.panTo([lat, lng]);
+    } else {
+        activeJobsWorkerMarker.setLatLng([lat, lng]);
+    }
+    
+    // Update all polylines
+    Object.keys(activeJobsPolylines).forEach(jobId => {
+        const customerLatLng = activeJobsCustomerMarkers[jobId].getLatLng();
+        activeJobsPolylines[jobId].setLatLngs([[lat, lng], customerLatLng]);
+    });
+}
+
+function updateCustomerMarker(job) {
+    if (!activeJobsMap) return;
+    const { id: jobId, location, customerName } = job;
+    const latLng = [location.lat, location.lng];
+
+    const customerIcon = L.divIcon({
+        className: 'custom-customer-icon',
+        html: '<div class="customer-marker-icon"><i class="fas fa-user-tie"></i></div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+
+    if (!activeJobsCustomerMarkers[jobId]) {
+        // Create Marker
+        activeJobsCustomerMarkers[jobId] = L.marker(latLng, { icon: customerIcon })
+            .addTo(activeJobsMap)
+            .bindPopup(`<b>${customerName}</b><br>${job.serviceType}`);
+
+        // Create Animated Polyline (Ant Path effect via CSS)
+        const polyline = L.polyline([activeJobsWorkerMarker ? activeJobsWorkerMarker.getLatLng() : latLng, latLng], {
+            color: '#00d2ff',
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '10, 10',
+            className: 'leaflet-ant-path'
+        }).addTo(activeJobsMap);
+
+        activeJobsPolylines[jobId] = polyline;
+    } else {
+        activeJobsCustomerMarkers[jobId].setLatLng(latLng);
+        if (activeJobsWorkerMarker) {
+            activeJobsPolylines[jobId].setLatLngs([activeJobsWorkerMarker.getLatLng(), latLng]);
+        }
+    }
+}
+
+function removeCustomerMarker(jobId) {
+    if (activeJobsCustomerMarkers[jobId]) {
+        activeJobsMap.removeLayer(activeJobsCustomerMarkers[jobId]);
+        delete activeJobsCustomerMarkers[jobId];
+    }
+    if (activeJobsPolylines[jobId]) {
+        activeJobsMap.removeLayer(activeJobsPolylines[jobId]);
+        delete activeJobsPolylines[jobId];
+    }
+}
+
+function updateMapInfoCard(jobs) {
+    const infoCard = document.getElementById('map-tracking-info');
+    const nameEl = document.getElementById('tracked-customer-name');
+    const distEl = document.getElementById('tracked-distance');
+    
+    if (!infoCard || jobs.length === 0) {
+        if (infoCard) infoCard.style.display = 'none';
+        return;
+    }
+
+    const job = jobs[0]; // Track first active job in detail
+    infoCard.style.display = 'block';
+    nameEl.textContent = job.customerName || 'Active Client';
+    
+    // Store coordinates for directions
+    const dirBtn = document.getElementById('map-get-directions');
+    if (dirBtn && job.location) {
+        dirBtn.dataset.lat = job.location.lat;
+        dirBtn.dataset.lng = job.location.lng;
+    }
+    
+    if (activeJobsWorkerMarker && job.location) {
+        const workerLatLng = activeJobsWorkerMarker.getLatLng();
+        const dist = activeJobsMap.distance(workerLatLng, [job.location.lat, job.location.lng]) / 1000;
+        distEl.textContent = dist.toFixed(2) + ' km';
+    }
+}
+
+window.openDirections = function() {
+    const dirBtn = document.getElementById('map-get-directions');
+    if (!dirBtn || !dirBtn.dataset.lat) {
+        showToast('No active target destination found', 'warning');
+        return;
+    }
+
+    const destLat = dirBtn.dataset.lat;
+    const destLng = dirBtn.dataset.lng;
+    
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}`;
+    
+    // Add origin if available from our location engine
+    if (window.locationEngine && window.locationEngine.lastCoords) {
+        const { lat, lng } = window.locationEngine.lastCoords;
+        url += `&origin=${lat},${lng}`;
+    }
+
+    window.open(url, '_blank');
+};
+
+window.recenterMap = function() {
+    if (activeJobsMap && activeJobsWorkerMarker) {
+        activeJobsMap.flyTo(activeJobsWorkerMarker.getLatLng(), 15);
+    }
+};
+
+window.cleanupActiveJobsMap = function() {
+    console.log('🧼 [MISSION CONTROL] Cleaning up map resources...');
+    activeJobsUnsubscribes.forEach(unsub => {
+        try { unsub(); } catch (e) {}
+    });
+    activeJobsUnsubscribes = [];
+    
+    if (activeJobsMap) {
+        try {
+            activeJobsMap.remove();
+        } catch (e) {
+            console.warn('Map removal failed:', e);
+        }
+        activeJobsMap = null;
+    }
+    activeJobsWorkerMarker = null;
+    activeJobsCustomerMarkers = {};
+    activeJobsPolylines = {};
+};
+
+// Hook into existing initialization flow
+const originalInitializePage = window.initializePage;
+window.initializePage = function(pageName, params) {
+    if (typeof originalInitializePage === 'function') {
+        originalInitializePage(pageName, params);
+    }
+    
+    if (pageName === 'active-jobs') {
+        setTimeout(window.initActiveJobsMap, 500);
+    } else {
+        window.cleanupActiveJobsMap();
+    }
+};

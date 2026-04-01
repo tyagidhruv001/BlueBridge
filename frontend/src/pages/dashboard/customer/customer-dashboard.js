@@ -561,15 +561,27 @@ function renderDashboardWorkerModal(worker) {
                 <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); margin: 0;">${bio}</p>
             </div>
 
-            <!-- Skills -->
+            <!-- Profession -->
             <div style="margin-bottom: 1.5rem;">
                 <h4 style="margin-bottom: 10px; color: #fff; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-tools" style="color: var(--neon-blue);"></i> Skills & Expertise
+                    <i class="fas fa-tools" style="color: var(--neon-blue);"></i> Professional Category
                 </h4>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${skills.map(s => `<span class="skill-tag" style="background: rgba(0,210,255,0.1); color: var(--neon-blue); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(0,210,255,0.3);">${s}</span>`).join('')}
+                    <span class="skill-tag" style="background: rgba(0,210,255,0.1); color: var(--neon-blue); padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; border: 1px solid rgba(0,210,255,0.3); font-weight: 600;">${worker.profession || worker.category || 'General Professional'}</span>
                 </div>
             </div>
+
+            ${skills.length > 0 && skills[0] !== category ? `
+            <!-- Specific Skills -->
+            <div style="margin-bottom: 1.5rem;">
+                <h4 style="margin-bottom: 10px; color: #fff; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-list-ul" style="color: var(--neon-green);"></i> Additional Skills
+                </h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${skills.map(s => `<span class="skill-tag" style="background: rgba(52,211,153,0.1); color: #34d399; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; border: 1px solid rgba(52,211,153,0.3);">${s}</span>`).join('')}
+                </div>
+            </div>
+            ` : ''}
 
             <!-- View Route History -->
             <button class="btn btn-secondary" style="width: 100%; margin-bottom: 1.5rem; border: 1px solid var(--neon-purple); color: var(--neon-purple); background: rgba(157, 80, 187, 0.1); padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;" onclick="closeDashboardWorkerModal(); window.visualizeWorkerHistory('${worker.uid || worker.id}')">
@@ -1944,8 +1956,40 @@ let nearbyMap = null;
 let mapMarkers = [];
 let customerMarker = null;
 let workerUnsubscribe = null;
+let discoveryUnsubscribe = null;
 let customerLocation = { lat: 19.0760, lng: 72.8777 }; // Default: Mumbai
 let globalWatchId = null;
+
+/**
+ * NEW: Dynamic Worker Discovery Listener
+ * Listens for changes in workers and jobs to update the UI in real-time.
+ */
+function startDiscoveryListener(category = 'all') {
+    if (discoveryUnsubscribe) {
+        discoveryUnsubscribe();
+    }
+
+    console.log(`📡 Starting Dynamic Discovery for category: ${category}`);
+    
+    // Listener 1: Job Changes (Busy Status)
+    const jobsQuery = query(collection(db, 'jobs'), where('status', 'in', ['assigned', 'accepted', 'in_progress', 'running', 'on the way', 'active']));
+    const jobsUnsub = onSnapshot(jobsQuery, async () => {
+        console.log('🔄 Discovery Refresh (Job Action)');
+        renderNearbyWorkers(category, true);
+    });
+
+    // Listener 2: Worker Profile/Online Changes
+    const workersQuery = query(collection(db, 'users'), where('role', '==', 'worker'));
+    const workersUnsub = onSnapshot(workersQuery, async () => {
+        console.log('🔄 Discovery Refresh (Worker Profile/Online Status)');
+        renderNearbyWorkers(category, true);
+    });
+
+    discoveryUnsubscribe = () => {
+        jobsUnsub();
+        workersUnsub();
+    };
+}
 
 /**
  * NEW: Continuous High-Accuracy Geolocation Watch
@@ -2096,21 +2140,23 @@ async function getCustomerLocation(force = false) {
     return Promise.resolve(customerLocation);
 }
 
-async function renderNearbyWorkers(category = 'all') {
+async function renderNearbyWorkers(category = 'all', isRefresh = false) {
     const listContainer = getEl('nearby-workers-list');
-    if (!listContainer) {
-        console.error('nearby-workers-list element not found!');
-        return;
+    if (!listContainer) return;
+
+    if (!isRefresh) {
+        startDiscoveryListener(category);
     }
 
     // STYLING: Enforce horizontal scrolling layout
     listContainer.style.display = 'flex';
     listContainer.style.flexDirection = 'row';
     listContainer.style.overflowX = 'auto';
-    listContainer.style.gap = '1rem';
-    listContainer.style.padding = '0.5rem';
+    listContainer.style.overflowY = 'visible'; // Ensure absolute badges aren't clipped
+    listContainer.style.gap = '1.5rem';
+    listContainer.style.padding = '20px 10px 10px 10px'; // Extra top padding for badges
     listContainer.style.scrollBehavior = 'smooth';
-    listContainer.style.scrollbarWidth = 'thin'; // Firefox
+    listContainer.style.scrollbarWidth = 'none'; // Hide scrollbar for cleaner look
 
     // Initial loading state
     listContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 2rem; width: 100%;"><i class="fas fa-spinner fa-spin"></i> Loading professionals...</div>';
@@ -2131,25 +2177,28 @@ async function renderNearbyWorkers(category = 'all') {
         const workers = await API.workers.getAll(filters);
         console.log(`API returned ${workers.length} workers:`, workers);
 
-        if (workers.length === 0) {
-            listContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 2rem; width: 100%;"><i class="fas fa-user-slash"></i><br><br>No workers found in this category.</div>';
-            // Still initialize map with customer location
+        // IMPORTANT: No longer filtering busy workers out, we show them as "Busy" instead
+        const allWorkers = workers;
+        console.log(`📡 [MISSION RADAR] ${allWorkers.length} professionals total found.`);
+
+        if (allWorkers.length === 0) {
+            listContainer.innerHTML = '<div style="color: #aaa; text-align: center; padding: 2rem; width: 100%;"><i class="fas fa-user-slash"></i><br><br>No professionals found in this category.</div>';
             setTimeout(() => initNearbyMap([]), 100);
             return;
         }
 
-        // NEW: Fetch all bookings from storage to identify assigned professionals (using Storage v5.1)
+        // NEW: Fetch all bookings from storage to identify assigned professionals for styling
         const allBookings = Storage.get('BlueBridge_bookings') || [];
         const activeBookings = (allBookings || []).filter(b => 
             ['Assigned', 'Active', 'In_progress', 'Running', 'Accepted'].includes(b.status)
         );
 
-        console.log(`📡 [MISSION RADAR] Tracking ${activeBookings.length} active assignments in UI`);
-
-        listContainer.innerHTML = workers.map(w => {
+        listContainer.innerHTML = allWorkers.map(w => {
+            const isBusy = w.isBusy || false;
             const name = w.name || 'Unknown Worker';
             const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-            const skill = (w.category || 'General').charAt(0).toUpperCase() + (w.category || 'General').slice(1);
+            const profession = w.profession || w.category || 'General';
+            const skill = (profession).charAt(0).toUpperCase() + (profession).slice(1);
             const rating = w.rating_avg || 4.5;
             const totalJobs = w.stats?.total_jobs || w.total_jobs || 0;
             const price = w.base_price || 350;
@@ -2162,8 +2211,9 @@ async function renderNearbyWorkers(category = 'all') {
             const isOnline = w.is_online !== false;
 
             return `
-                <div class="nearby-worker-card ${!isOnline ? 'offline' : ''} ${isAssigned ? 'assigned-mission' : ''}" onclick="window.focusOnWorker('${w.uid}')" style="min-width: 300px; max-width: 320px; flex-shrink: 0; background: ${isAssigned ? 'rgba(0, 210, 255, 0.08)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isAssigned ? 'var(--neon-blue)' : 'var(--glass-border)'}; border-radius: 12px; padding: 1rem; cursor: pointer; transition: transform 0.2s; display: flex; gap: 1rem; align-items: flex-start; position: relative;">
-                    ${isAssigned ? '<div style="position: absolute; top: -10px; right: 10px; background: var(--neon-blue); color: #000; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; box-shadow: 0 0 10px var(--neon-blue);">ASSIGNED PROFESSIONAL</div>' : ''}
+                <div class="nearby-worker-card ${!isOnline ? 'offline' : ''} ${isAssigned ? 'assigned-mission' : ''} ${isBusy ? 'busy-worker' : ''}" onclick="window.focusOnWorker('${w.uid}')" style="min-width: 300px; max-width: 320px; flex-shrink: 0; background: ${isAssigned ? 'rgba(0, 210, 255, 0.12)' : 'rgba(255,255,255,0.04)'}; border: 1px solid ${isAssigned ? 'var(--neon-blue)' : isBusy ? 'rgba(255, 100, 100, 0.4)' : 'var(--glass-border)'}; border-radius: 16px; padding: 1.25rem; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; gap: 1rem; align-items: flex-start; position: relative; margin-top: 15px; box-shadow: ${isAssigned ? '0 0 20px rgba(0, 210, 255, 0.15)' : 'none'}; opacity: ${isBusy && !isAssigned ? '0.75' : '1'};">
+                    ${isAssigned ? '<div style="position: absolute; top: -12px; right: 15px; background: var(--neon-blue); color: #000; font-size: 0.7rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; box-shadow: 0 0 15px var(--neon-blue); z-index: 10; letter-spacing: 0.5px;">ASSIGNED PROFESSIONAL</div>' : ''}
+                    ${isBusy && !isAssigned ? '<div style="position: absolute; top: -12px; right: 15px; background: #ff4444; color: #fff; font-size: 0.7rem; font-weight: 800; padding: 3px 12px; border-radius: 20px; box-shadow: 0 0 15px #ff4444; z-index: 10; letter-spacing: 0.5px;">CURRENTLY BUSY</div>' : ''}
                     <div class="card-avatar-wrapper" style="position: relative;">
                         <div class="card-avatar" style="width: 50px; height: 50px; background: ${isAssigned ? 'var(--neon-blue)' : 'var(--bg-tertiary)'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: ${isAssigned ? '#000' : '#fff'};">${initials}</div>
                         ${isOnline ? '<div class="online-indicator" style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: var(--neon-green); border-radius: 50%; border: 2px solid #1a1a1a;"></div>' : ''}
@@ -2185,22 +2235,25 @@ async function renderNearbyWorkers(category = 'all') {
                                 ${isAssigned ? 'LIVE TRACKING ACTIVE' : isTrackable ? 'Live Location' : 'Tracking Unavailable'}
                             </div>
                         </div>
-                        <div class="card-actions" style="display: flex; gap: 0.5rem;">
+                        <div class="card-actions" style="display: flex; gap: 0.75rem; margin-top: 0.5rem;">
                             ${isAssigned ? 
-                                `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.location.href='/chat/chat'" style="flex: 1; padding: 0.4rem; font-size: 0.8rem; background: var(--neon-pink); border-color: var(--neon-pink); color: #fff;"><i class="fas fa-comment"></i> Chat now</button>` :
-                                `<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.uid}')" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fas fa-info-circle"></i> Details</button>`
+                                `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.location.href='/chat/chat'" style="flex: 2; padding: 0.5rem; font-size: 0.85rem; background: var(--neon-pink); border: none; color: #fff; font-weight: 700; border-radius: 8px; box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);"><i class="fas fa-comment"></i> Chat Now</button>` :
+                                `<button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.uid}')" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.05); color: #fff;"><i class="fas fa-id-badge"></i> Profile</button>`
                             }
-                            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); window.openBookingPage('${w.category}')" style="flex: 1; padding: 0.4rem; font-size: 0.8rem;"><i class="fas fa-calendar-check"></i> Book</button>
+                            ${!isAssigned ? 
+                                `<button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); ${isBusy ? 'alert(\'This professional is currently on another job.\')' : `window.openBookingPage('${w.profession || w.category || 'General'}')`}" style="flex: 1; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; border-radius: 8px; ${isBusy ? 'background: #333; border: 1px solid #444; color: #666; cursor: not-allowed;' : 'background: var(--neon-blue); color: #000; border: none;'}">
+                                    <i class="fas ${isBusy ? 'fa-hourglass-half' : 'fa-calendar-check'}"></i> 
+                                    ${isBusy ? 'Busy' : 'Book'}
+                                </button>` : ''
+                            }
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
 
-        // Update map with workers and customer location.
-        // Workers without a location get placed near the customer with a small random
-        // offset so they're always visible on the map. Real GPS (if stored) takes priority.
-        const mappedWorkers = workers.map(w => {
+        // Update map with ALL workers.
+        const mappedWorkers = allWorkers.map(w => {
             const hasGPS = w.location?.lat && w.location?.lng;
             return {
                 id: w.uid,
@@ -2211,6 +2264,7 @@ async function renderNearbyWorkers(category = 'all') {
                 lng: hasGPS ? w.location.lng : (customerLocation.lng + (Math.random() - 0.5) * 0.03),
                 price: w.base_price || 350,
                 isOnline: w.is_online !== false,
+                isBusy: w.isBusy,
                 hasRealGPS: hasGPS
             };
         });
@@ -2400,6 +2454,18 @@ function initNearbyMap(workers) {
         });
 
         const marker = L.marker([w.lat, w.lng], { icon: workerIcon }).addTo(nearbyMap);
+        
+        // NEW: Draw a subtle connection line from customer to worker
+        const connectionLine = L.polyline([
+            [customerLocation.lat, customerLocation.lng],
+            [w.lat, w.lng]
+        ], {
+            color: categoryColor,
+            weight: 1.5,
+            dashArray: '8, 12',
+            opacity: 0.4,
+            interactive: false
+        }).addTo(nearbyMap);
 
         // NEW: Real-time update for assigned professional
         const allBookings = Storage.get('BlueBridge_bookings') || [];
@@ -2440,14 +2506,15 @@ function initNearbyMap(workers) {
                     <span style="font-size: 0.85rem; font-weight: 700; color: var(--neon-green);">₹${w.price}/hr</span>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;">
-                    <button onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.id}')" style="background: rgba(255,255,255,0.1); border: 1px solid ${categoryColor}40; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #fff; font-weight: 600; font-size: 0.7rem; transition: all 0.2s;"><i class="fas fa-user"></i> Profile</button>
-                    <button onclick="event.stopPropagation(); window.openBookingPage('${w.category}')" style="background: ${categoryColor}; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #000; font-weight: 700; font-size: 0.7rem; transition: all 0.2s;"><i class="fas fa-calendar-check"></i> Book</button>
+                    <button onclick="event.stopPropagation(); window.showWorkerProfileInDashboard('${w.id}')" style="background: rgba(255,255,255,0.1); border: 1px solid ${categoryColor}40; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #fff; font-weight: 600; font-size: 0.7rem; transition: all 0.2s;"><i class="fas fa-id-card"></i> Profile</button>
+                    <button onclick="event.stopPropagation(); window.openBookingPage('${w.category}')" style="background: ${categoryColor}; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; color: #000; font-weight: 700; font-size: 0.7rem; transition: all 0.2s;"><i class="fas fa-calendar-plus"></i> Book</button>
                 </div>
             </div>
         `, { className: 'dark-popup', maxWidth: 250 });
 
         marker.workerId = w.id;
         mapMarkers.push(marker);
+        mapMarkers.push(connectionLine); // Add to markers array so it gets cleaned up on refresh
         addedMarkers++;
     });
 
