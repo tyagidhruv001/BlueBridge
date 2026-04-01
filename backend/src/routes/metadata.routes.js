@@ -29,10 +29,10 @@ router.post('/categories', async (req, res) => {
     try {
         const { name, slug, icon, base_price } = req.body;
         await db.collection('service_categories').add({
-            name,
-            slug: slug || name.toLowerCase().replace(/ /g, '-'),
-            icon,
-            base_price,
+            name: name || 'New Category',
+            slug: slug || (name || 'new').toLowerCase().replace(/ /g, '-'),
+            icon: icon || 'wrench',
+            base_price: base_price || 0,
             isActive: true
         });
         res.status(201).json({ success: true });

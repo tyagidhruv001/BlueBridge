@@ -110,7 +110,7 @@ exports.getWorkers = async (req, res) => {
 
                 // Filter by category if requested
                 if (category && category !== 'all') {
-                    const targetCategory = category.toLowerCase();
+                    const targetCategory = String(category).toLowerCase();
                     const workerCategory = (combinedData.category || '').toLowerCase();
                     const workerProfession = (combinedData.profession || '').toLowerCase();
                     
@@ -226,7 +226,7 @@ exports.getWorkerById = async (req, res) => {
             name: userData.name || 'Unknown Professional',
             avatar: userData.profile_pic || userData.avatar || '',
             is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-            category: workerData.category || (userData.skills ? userData.skills[0].toLowerCase() : 'general'),
+            category: workerData.category || (userData.skills && userData.skills.length > 0 ? userData.skills[0].toLowerCase() : 'general'),
             rating_avg: workerData.avg_rating || workerData.stats?.avg_rating || 4.5,
             ...userData,
             ...workerData,
