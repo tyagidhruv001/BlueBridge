@@ -1,7 +1,6 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { collection, query, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore';
-import { serverTimestamp } from 'firebase/firestore';
 import { db } from '../../utils/config';
 import { API } from '../../api/api';
 import './Chat.css';
@@ -12,7 +11,7 @@ const Chat = () => {
     
     // URL Params
     const bookingId = searchParams.get('bookingId');
-    const receiverId = searchParams.get('receiverId'); // The ID of the person we are chatting with
+    const receiverId = searchParams.get('receiverId');
     const receiverName = searchParams.get('receiverName') || 'Chat';
     
     const [messages, setMessages] = useState([]);
@@ -24,7 +23,6 @@ const Chat = () => {
     const chatContainerRef = useRef(null);
     const typingTimeoutRef = useRef(null);
 
-    // Get current user from localStorage
     const userStr = localStorage.getItem('BlueBridge_user');
     const currentUser = userStr ? JSON.parse(userStr) : null;
     const currentUserId = currentUser ? (currentUser.uid || currentUser.user_id) : null;
@@ -32,7 +30,6 @@ const Chat = () => {
     useEffect(() => {
         if (!bookingId || !currentUserId) return;
 
-        // 1. Listen for new messages
         const q = query(
             collection(db, "chats", bookingId, "messages"),
             orderBy("timestamp", "asc")
@@ -42,30 +39,15 @@ const Chat = () => {
             const fetchedMessages = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data(),
-                // Firestore timestamp fallback
                 timestamp: doc.data().timestamp?.toDate 
                     ? doc.data().timestamp.toDate().toISOString() 
                     : doc.data().timestamp 
             }));
             
             setMessages(fetchedMessages);
-            
-            // Auto-scroll if near bottom
-            if (chatContainerRef.current) {
-                const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
-                const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
-                if (isNearBottom) {
-                    scrollToBottom();
-                } else if (fetchedMessages.length > 0 && fetchedMessages[fetchedMessages.length - 1].senderId === currentUserId) {
-                    // Always scroll if WE sent the message
-                    scrollToBottom();
-                }
-            } else {
-                scrollToBottom();
-            }
+            scrollToBottom();
         });
 
-        // 2. Listen for metadata (Typing indicator & unread count updates)
         const unsubscribeMeta = onSnapshot(doc(db, "chats", bookingId), (docSnapshot) => {
             if (docSnapshot.exists()) {
                 const data = docSnapshot.data();
@@ -91,10 +73,8 @@ const Chat = () => {
 
     const handleInput = (e) => {
         setInput(e.target.value);
-
         if (!bookingId || !currentUserId) return;
 
-        // Handle typing indicator
         if (!isTyping) {
             setIsTyping(true);
             setDoc(doc(db, 'chats', bookingId), {
@@ -113,32 +93,14 @@ const Chat = () => {
 
     const handleSend = async () => {
         if (!input.trim() || !bookingId || !currentUserId) return;
-
         const text = input.trim();
-        const tempId = 'temp-' + Date.now();
-        
-        // Optimistic UI update
-        const tempMessage = {
-            id: tempId,
-            text,
-            senderId: currentUserId,
-            receiverId: receiverId,
-            timestamp: new Date().toISOString(),
-            type: "text",
-            seen: false
-        };
-
-        setMessages(prev => [...prev, tempMessage]);
         setInput("");
         
-        // Stop typing indicator immediately
         clearTimeout(typingTimeoutRef.current);
         setIsTyping(false);
         setDoc(doc(db, 'chats', bookingId), {
             typing: { [currentUserId]: false }
         }, { merge: true });
-        
-        scrollToBottom();
 
         try {
             await API.chat.sendP2P({
@@ -147,9 +109,9 @@ const Chat = () => {
                 senderId: currentUserId,
                 receiverId: receiverId
             });
+            scrollToBottom();
         } catch (error) {
             console.error("Failed to send message", error);
-            // Revert optimistic update gracefully if desired
             alert("Failed to send message");
         }
     };
@@ -163,23 +125,24 @@ const Chat = () => {
     return (
         <div className="chat-wrapper">
             <div className="chat-header">
-                <button 
-                    onClick={() => history.back()}
-                    style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.2rem', cursor: 'pointer' }}
-                >
-                    <i className="fas fa-arrow-left"></i>
+                <button className="back-btn" onClick={() => navigate(-1)}>
+                    <i className="fas fa-chevron-left"></i>
                 </button>
+                
                 <div className="worker-avatar">
                     {receiverName.substring(0, 2).toUpperCase()}
+                    <div className={`status-dot ${partnerTyping ? 'typing' : ''}`}></div>
                 </div>
-                <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{receiverName}</h3>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--neon-green)' }}>
-                        {partnerTyping ? 'typing...' : 'Online'}
+                
+                <div className="header-info">
+                    <h3>{receiverName}</h3>
+                    <p style={{ color: partnerTyping ? '#39ff14' : 'rgba(255,255,255,0.6)' }}>
+                        {partnerTyping ? 'typing...' : 'Online and active'}
                     </p>
                 </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem' }}>
-                    <button style={{ background: 'none', border: 'none', color: 'white', fontSize: '1.1rem', cursor: 'pointer' }} onClick={() => alert('Calling...')}>
+                
+                <div style={{ marginLeft: 'auto' }}>
+                    <button className="back-btn" onClick={() => window.open(`tel:${searchParams.get('phone') || ''}`)}>
                         <i className="fas fa-phone-alt"></i>
                     </button>
                 </div>
@@ -187,42 +150,63 @@ const Chat = () => {
 
             <div className="chat-container" ref={chatContainerRef}>
                 {messages.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'white', opacity: 0.5, marginTop: '20px' }}>
-                        Start of conversation
+                    <div style={{ textAlign: 'center', opacity: 0.3, marginTop: '2rem' }}>
+                        <i className="fas fa-shield-alt" style={{ fontSize: '2rem', marginBottom: '1rem' }}></i>
+                        <p>Messages are end-to-end encrypted</p>
                     </div>
                 ) : (
                     messages.map((msg) => {
                         const isSent = msg.senderId === currentUserId;
                         return (
                             <div key={msg.id} className={`message ${isSent ? 'msg-sent' : 'msg-received'}`}>
-                                <div>{msg.text}</div>
-                                <span className="msg-time">{formatTime(msg.timestamp)} {isSent && (msg.seen ? <i className="fas fa-check-double text-blue-500"></i> : <i className="fas fa-check"></i>)}</span>
+                                <div className="text-content">{msg.text}</div>
+                                <div className="msg-time">
+                                    {formatTime(msg.timestamp)}
+                                    {isSent && (
+                                        <i className={`fas fa-check-double ${msg.seen ? 'text-cyan-400' : ''}`} 
+                                           style={{ color: msg.seen ? '#00d2ff' : 'inherit' }}></i>
+                                    )}
+                                </div>
                             </div>
                         );
                     })
                 )}
+                
+                {partnerTyping && (
+                    <div className="typing-wrapper">
+                        <div className="dot"></div>
+                        <div className="dot"></div>
+                        <div className="dot"></div>
+                    </div>
+                )}
+                
                 <div ref={chatEndRef} />
             </div>
 
             <div className="chat-footer">
-                <button className="action-btn" onClick={() => alert('Attachments coming soon!')}>
-                    <i className="fas fa-paperclip"></i>
+                <button className="attachment-btn" onClick={() => alert('Attachments coming soon!')}>
+                    <i className="fas fa-plus"></i>
                 </button>
 
-                <input 
-                    type="text" 
-                    className="chat-input" 
-                    placeholder="Type a message..." 
-                    value={input}
-                    onChange={handleInput}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSend();
-                    }}
-                />
-                
-                <button className="send-btn" onClick={handleSend}>
-                    <i className="fas fa-paper-plane"></i>
-                </button>
+                <div className="input-container">
+                    <input 
+                        type="text" 
+                        className="chat-input" 
+                        placeholder="Type a message..." 
+                        value={input}
+                        onChange={handleInput}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSend();
+                        }}
+                    />
+                    <button 
+                        className="send-btn" 
+                        onClick={handleSend}
+                        style={{ position: 'absolute', right: '4px', height: '40px', width: '40px', borderRadius: '12px' }}
+                    >
+                        <i className="fas fa-paper-plane"></i>
+                    </button>
+                </div>
             </div>
         </div>
     );
