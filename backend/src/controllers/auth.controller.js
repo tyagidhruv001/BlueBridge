@@ -2,7 +2,17 @@ const { auth, db } = require('../../config/firebase');
 
 exports.signup = async (req, res) => {
     try {
-        const { email, password, name, phone, role } = req.body;
+        let { email, password, name, phone, role } = req.body;
+
+        // Standardize phone format (Ensure +91 if missing and 10 digits)
+        if (phone && !phone.startsWith('+')) {
+            const digits = phone.replace(/\D/g, '');
+            if (digits.length === 10) {
+                phone = `+91${digits}`;
+            }
+        }
+
+        console.log(`[Signup Attempt] Email: ${email}, Role: ${role}, Phone: ${phone}`);
 
         const userRecord = await auth.createUser({
             email,
@@ -20,13 +30,34 @@ exports.signup = async (req, res) => {
             createdAt: new Date().toISOString()
         });
 
+        console.log(`[Signup Success] UID: ${userRecord.uid}`);
+
         res.status(201).json({
             message: 'User created',
             uid: userRecord.uid
         });
     } catch (error) {
-        console.error('Signup Error:', error);
-        res.status(500).json({ error: error.message });
+        console.error('Signup Error Detailed:', {
+            message: error.message,
+            code: error.code,
+            stack: error.stack
+        });
+
+        // Map Firebase Auth errors to readable 400 responses
+        if (error.code === 'auth/email-already-exists') {
+            return res.status(400).json({ error: 'This email is already registered.' });
+        }
+        if (error.code === 'auth/invalid-password') {
+            return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+        }
+        if (error.code === 'auth/phone-number-already-exists') {
+            return res.status(400).json({ error: 'This phone number is already registered.' });
+        }
+        if (error.code === 'auth/invalid-phone-number') {
+            return res.status(400).json({ error: 'Invalid phone number format. Use +91XXXXXXXXXX.' });
+        }
+
+        res.status(500).json({ error: error.message || 'Internal Server Error during signup' });
     }
 };
 
