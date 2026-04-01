@@ -231,7 +231,7 @@ exports.getWorkerById = async (req, res) => {
             name: userData.name || 'Unknown Professional',
             avatar: userData.profile_pic || userData.avatar || '',
             is_online: userData.is_online !== undefined ? userData.is_online : (workerData.is_online || false),
-            category: workerData.category || (userData.skills && userData.skills.length > 0 && typeof userData.skills[0] === 'string' ? userData.skills[0].toLowerCase() : 'general'),
+
             rating_avg: workerData.avg_rating || workerData.stats?.avg_rating || 4.5,
             ...userData,
             ...workerData,
