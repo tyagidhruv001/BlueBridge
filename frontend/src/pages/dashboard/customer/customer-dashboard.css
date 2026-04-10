@@ -199,7 +199,8 @@
     border-radius: 50px;
     /* Fully rounded */
     padding: 0.5rem 1.25rem;
-    width: 400px;
+    width: 100%;
+    max-width: 400px;
     transition: all 0.3s;
 }
 
@@ -207,7 +208,7 @@
     background: rgba(255, 255, 255, 0.08);
     border-color: var(--neon-blue);
     box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
-    width: 420px;
+    max-width: 420px;
 }
 
 .search-bar i {
@@ -541,12 +542,15 @@
 }
 
 .modal-container {
-    width: 800px;
+    width: 95%;
+    max-width: 800px;
     background: var(--bg-dark-800);
     border: 1px solid var(--glass-border);
     border-radius: 32px;
     overflow: hidden;
     position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .step-progress {
@@ -590,7 +594,9 @@
     bottom: 90px;
     right: 2rem;
     width: 380px;
+    max-width: calc(100vw - 2rem);
     height: 500px;
+    max-height: calc(100vh - 110px);
     background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
@@ -1563,6 +1569,14 @@
     background: var(--neon-blue);
 }
 
+/* === Utility Classes === */
+.desktop-only {
+    display: inherit;
+}
+.mobile-only {
+    display: none !important;
+}
+
 /* === Responsive Design === */
 @media (max-width: 1024px) {
     .nearby-workers-layout {
@@ -1575,6 +1589,43 @@
 
     .worker-price {
         font-size: 1rem;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        width: 280px;
+        z-index: 1000;
+    }
+    
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    .sidebar-overlay.active {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 999;
+    }
+    
+    .dashboard-layout {
+        display: block;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: inherit !important;
     }
 }
 
@@ -1631,6 +1682,39 @@
 
     .card-actions .btn {
         width: 100%;
+    }
+
+    .top-header {
+        padding: 0 1rem;
+        height: 65px;
+        min-height: unset;
+        flex-wrap: nowrap;
+        gap: 0.5rem;
+    }
+
+    .header-left {
+        width: auto;
+        flex: 1;
+        justify-content: flex-start;
+        margin-bottom: 0;
+        gap: 1rem;
+    }
+
+    .search-bar {
+        flex: 1;
+        max-width: none;
+        width: auto;
+        min-width: 0; /* Allows shrinking */
+    }
+    
+    .user-actions {
+        gap: 0.5rem;
+    }
+
+    .chat-popup-window {
+        right: 1rem;
+        width: calc(100vw - 2rem);
+        max-width: 100vw;
     }
 }
 

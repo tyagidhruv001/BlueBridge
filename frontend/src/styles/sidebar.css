@@ -126,3 +126,17 @@
     color: var(--error);
     margin-bottom: var(--spacing-md);
 }
+
+/* === Responsive Support === */
+@media (max-width: 768px) {
+    .profile-info {
+        grid-template-columns: 1fr;
+    }
+    .services-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
+    .map-container {
+        height: 300px;
+    }
+}
