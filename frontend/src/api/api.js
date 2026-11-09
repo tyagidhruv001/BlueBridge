@@ -5,19 +5,25 @@ const isLocal = window.location.hostname === 'localhost' || window.location.host
 // In production, set VITE_BACKEND_URL in your Cloudflare/Vercel dashboard
 const PROD_BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'https://deploy001-cyan.vercel.app';
 
+const cleanBaseUrl = (PROD_BACKEND_URL || '').replace(/\/+$/, '');
+
 export const API_BASE = isLocal
     ? "http://localhost:5000/api"
-    : (PROD_BACKEND_URL ? (PROD_BACKEND_URL.endsWith('/') ? PROD_BACKEND_URL : PROD_BACKEND_URL) + "/api" : "/api");
+    : (cleanBaseUrl ? `${cleanBaseUrl}/api` : "/api");
 
 export async function apiFetch(path, options = {}) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60-second timeout for heavy AI tasks
 
     try {
+        const { headers, ...restOptions } = options;
         const res = await fetch(API_BASE + path, {
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                ...(headers || {})
+            },
             signal: controller.signal,
-            ...options
+            ...restOptions
         });
         clearTimeout(timeoutId);
 

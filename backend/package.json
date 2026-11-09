@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "env:base64": "node -e \"const fs=require('fs'); console.log(Buffer.from(fs.readFileSync('serviceAccountKey.json')).toString('base64'));\"",
     "db:clear": "node clear-db.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
