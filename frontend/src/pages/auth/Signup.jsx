@@ -8,7 +8,7 @@ const Signup = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const initialRole = searchParams.get('role') || Storage.get('BlueBridge_user_role');
-    
+
     const [role, setRole] = useState(initialRole);
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
@@ -45,14 +45,14 @@ const Signup = () => {
         if (password.length < 6) errors.password = "Password must be at least 6 characters";
         if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match";
         if (!acceptedTerms) errors.terms = "You must accept the terms";
-        
+
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
     const handleSignup = async (e) => {
         e.preventDefault();
-        
+
         if (!validate()) return;
 
         setIsLoading(true);
@@ -63,7 +63,7 @@ const Signup = () => {
         try {
             const data = await API.auth.signup({
                 name,
-                phone: formattedPhone, 
+                phone: formattedPhone,
                 email,
                 password,
                 role
@@ -95,7 +95,7 @@ const Signup = () => {
     const btnColorClass = role === 'customer' ? 'btn-neon-blue' : 'btn-neon-orange';
 
     return (
-        <div 
+        <div
             className="modern-deep-space auth-layout"
             onMouseMove={handleMouseMove}
             style={{
@@ -109,8 +109,8 @@ const Signup = () => {
                 position: 'relative'
             }}
         >
-            <div className="ambient-orb orb-primary" style={{top: '10%', right: '15%', opacity: 0.8}}></div>
-            <div className="ambient-orb orb-secondary" style={{bottom: '5%', left: '10%', opacity: 0.6}}></div>
+            <div className="ambient-orb orb-primary" style={{ top: '10%', right: '15%', opacity: 0.8 }}></div>
+            <div className="ambient-orb orb-secondary" style={{ bottom: '5%', left: '10%', opacity: 0.6 }}></div>
 
             <div className={`auth-card role-card-3d ${cardColorClass} login-card`} style={{ zIndex: 10, width: '100%', maxWidth: '440px', margin: '2rem 1rem' }}>
                 <div className="auth-header">
