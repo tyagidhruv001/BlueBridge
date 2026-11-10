@@ -32,9 +32,18 @@ exports.signup = async (req, res) => {
 
         console.log(`[Signup Success] UID: ${userRecord.uid}`);
 
+        // Generate Firebase custom token for instant client authentication
+        let token = null;
+        try {
+            token = await auth.createCustomToken(userRecord.uid);
+        } catch (tErr) {
+            console.warn('Could not generate custom token during signup:', tErr.message);
+        }
+
         res.status(201).json({
             message: 'User created',
-            uid: userRecord.uid
+            uid: userRecord.uid,
+            token
         });
     } catch (error) {
         console.error('Signup Error Detailed:', {
@@ -66,6 +75,12 @@ exports.login = async (req, res) => {
     try {
         let uid;
         if (idToken && idToken.startsWith('mock-token')) {
+            if (process.env.NODE_ENV === 'production') {
+                return res.status(401).json({
+                    error: 'Mock token authentication is disabled in production'
+                });
+            }
+
             if (phone) {
                 const userRecord = await auth.getUserByPhoneNumber(phone);
                 uid = userRecord.uid;
@@ -73,6 +88,9 @@ exports.login = async (req, res) => {
                 return res.status(400).json({ error: 'Mock login requires phone number' });
             }
         } else {
+            if (!idToken) {
+                return res.status(400).json({ error: 'Authentication token required' });
+            }
             const decodedToken = await auth.verifyIdToken(idToken);
             uid = decodedToken.uid;
         }
@@ -98,8 +116,17 @@ exports.login = async (req, res) => {
             };
         }
 
+        // Generate custom token so client can establish full Firebase Auth session
+        let token = null;
+        try {
+            token = await auth.createCustomToken(uid);
+        } catch (tErr) {
+            console.warn('Could not generate custom token during login:', tErr.message);
+        }
+
         res.json({
             message: 'Authenticated',
+            token,
             user: { ...userData, profile: profileData }
         });
     } catch (error) {
@@ -117,10 +144,24 @@ exports.login = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     try {
         const { uid } = req.params;
-        const updates = req.body;
+        const updates = { ...req.body };
 
+        // Enforce ownership: user can only update their own profile unless admin
+        if (req.user && req.user.uid !== uid && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied: You can only update your own profile' });
+        }
+
+        // Strip immutable and privileged fields
         delete updates.uid;
         delete updates.email;
+        delete updates.role;
+        delete updates.is_verified;
+        delete updates.verification_status;
+        delete updates.verified_at;
+        delete updates.wallet;
+        delete updates.stats;
+        delete updates.createdAt;
+        delete updates.created_at;
 
         await db.collection('users').doc(uid).update(updates);
 
@@ -160,6 +201,10 @@ exports.updateProfile = async (req, res) => {
 
 exports.getDemoUser = async (req, res) => {
     try {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(403).json({ error: 'Demo user access is disabled in production' });
+        }
+
         const { role } = req.params;
         const snapshot = await db.collection('users').where('role', '==', role).limit(1).get();
         

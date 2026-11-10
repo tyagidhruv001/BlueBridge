@@ -1,13 +1,13 @@
-﻿const express = require('express');
+const express = require('express');
 const router = express.Router();
 const { db } = require('../../config/firebase');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-
+const authenticate = require('../middlewares/auth.middleware');
 
 let genAI;
 
 // @route   POST /api/chat/send
-// @desc    Get a response from the AI worker
+// @desc    Get a response from the AI worker / platform assistant
 router.post('/send', async (req, res) => {
     try {
         console.log('[CHAT] Request Body Received:', JSON.stringify(req.body));
@@ -65,22 +65,31 @@ router.post('/send', async (req, res) => {
         if (error.message.includes('quota')) errorHint = 'Quota Exceeded. ';
         if (error.message.includes('safety')) errorHint = 'Content blocked by safety filters. ';
 
-        // Return the actual error message so we can see it in the UI
         res.status(500).json({
-            error: `${errorHint}${error.message}`,
-            details: error.stack
+            error: `${errorHint}${error.message}`
         });
     }
 });
 
 // @route   POST /api/chat/p2p
-// @desc    Send a P2P message
-router.post('/p2p', async (req, res) => {
+// @desc    Send a P2P message (Protected: participant only)
+router.post('/p2p', authenticate, async (req, res) => {
     try {
-        const { bookingId, senderId, receiverId, text, type } = req.body;
+        const { bookingId, receiverId, text, type } = req.body;
+        const senderId = req.user.uid;
 
-        if (!bookingId || !senderId || !text) {
+        if (!bookingId || !text) {
             return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Verify participant ownership of booking
+        const bookingDoc = await db.collection('jobs').doc(bookingId).get();
+        if (bookingDoc.exists) {
+            const booking = bookingDoc.data();
+            const isParticipant = booking.customerId === senderId || booking.workerId === senderId || req.user.role === 'admin';
+            if (!isParticipant) {
+                return res.status(403).json({ error: 'Access denied: You are not a participant in this booking' });
+            }
         }
 
         const messageData = {
@@ -88,31 +97,20 @@ router.post('/p2p', async (req, res) => {
             receiverId: receiverId || null,
             text,
             type: type || 'text',
-            timestamp: new Date().toISOString(), // Fallback, though frontend uses serverTimestamp
+            timestamp: new Date().toISOString(),
             seen: false
         };
 
         // Add to subcollection 'messages' inside the specific booking chat doc
         await db.collection('chats').doc(bookingId).collection('messages').add(messageData);
 
-        // Update chat metadata. Increment unread count for receiver if applicable.
         const chatRef = db.collection('chats').doc(bookingId);
-        
-        // We do a transaction or a simple set merge for metadata
-        // For simplicity with standard REST, we'll just merge the lastMessage.
-        // If unreadCount logic is strict, we should track which role the receiver is (customer or worker).
-        // Since we don't strictly know if receiver is customer/worker without DB lookup, 
-        // we'll update basic metadata. 
-        
         const chatUpdate = {
             lastMessage: text,
-            lastMessageTime: new Date().toISOString(), // Fallback for backend HTTP
+            lastMessageTime: new Date().toISOString(),
             bookingId: bookingId
         };
-        
-        // Let frontend handle unreadCount strictly with FieldValue.increment or we assume the receiver's unread goes up.
-        // We'll leave unreadCount calculation to be managed via Firestore triggers or client updates, 
-        // but we'll include the lastMessage update here.
+
         if (req.body.senderName) chatUpdate[`participants.${senderId}.name`] = req.body.senderName;
         if (req.body.senderPic) chatUpdate[`participants.${senderId}.pic`] = req.body.senderPic;
 
@@ -126,10 +124,21 @@ router.post('/p2p', async (req, res) => {
 });
 
 // @route   GET /api/chat/p2p/:bookingId
-// @desc    Get chat history for a booking
-router.get('/p2p/:bookingId', async (req, res) => {
+// @desc    Get chat history for a booking (Protected: participant only)
+router.get('/p2p/:bookingId', authenticate, async (req, res) => {
     try {
         const { bookingId } = req.params;
+        const userId = req.user.uid;
+
+        // Verify participant
+        const bookingDoc = await db.collection('jobs').doc(bookingId).get();
+        if (bookingDoc.exists) {
+            const booking = bookingDoc.data();
+            const isParticipant = booking.customerId === userId || booking.workerId === userId || req.user.role === 'admin';
+            if (!isParticipant) {
+                return res.status(403).json({ error: 'Access denied: You are not a participant in this booking' });
+            }
+        }
 
         const snapshot = await db.collection('chats').doc(bookingId).collection('messages')
             .orderBy('timestamp', 'asc')
