@@ -1,13 +1,112 @@
 const express = require('express');
 const router = express.Router();
 const paymentsService = require('../services/payments.service');
+const paypalService = require('../services/paypal.service');
 const {
     createOrderSchema,
     verifyPaymentSchema,
     deductWalletSchema,
     refundSchema
 } = require('../validators/payment.validator');
+const {
+    createPayPalOrderSchema,
+    capturePayPalOrderSchema
+} = require('../validators/paypal.validator');
 const authenticate = require('../middlewares/auth.middleware');
+
+// ==========================================
+// PAYPAL COMMERCE & CHECKOUT ENDPOINTS
+// ==========================================
+
+/**
+ * GET /api/payments/paypal/config
+ * Returns sanitized public PayPal configuration for client-side SDK initialization
+ */
+router.get('/paypal/config', (req, res) => {
+    try {
+        const config = paypalService.getClientConfig();
+        res.json(config);
+    } catch (err) {
+        console.error('PayPal config error:', err);
+        res.status(500).json({ success: false, error: 'Failed to retrieve PayPal configuration' });
+    }
+});
+
+/**
+ * POST /api/payments/paypal/create-order
+ * Creates an authoritative PayPal order bound to a verified booking (Protected)
+ */
+router.post('/paypal/create-order', authenticate, async (req, res) => {
+    try {
+        const { error, value } = createPayPalOrderSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ success: false, error: error.details[0].message });
+        }
+
+        const result = await paypalService.createOrder({
+            userId: req.user.uid,
+            bookingId: value.bookingId,
+            currency: value.currency
+        });
+
+        res.json(result);
+    } catch (err) {
+        console.error('PayPal create order error:', err);
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/payments/paypal/capture-order
+ * Captures PayPal payment server-side and updates booking/transaction atomically (Protected)
+ */
+router.post('/paypal/capture-order', authenticate, async (req, res) => {
+    try {
+        const { error, value } = capturePayPalOrderSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ success: false, error: error.details[0].message });
+        }
+
+        const result = await paypalService.captureOrder({
+            userId: req.user.uid,
+            orderId: value.orderId,
+            bookingId: value.bookingId
+        });
+
+        res.json(result);
+    } catch (err) {
+        console.error('PayPal capture error:', err);
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/payments/paypal/webhook
+ * Listens for verified PayPal webhook events for asynchronous payment state updates
+ */
+router.post('/paypal/webhook', async (req, res) => {
+    try {
+        const isValid = await paypalService.verifyWebhookSignature({
+            headers: req.headers,
+            rawBody: req.body
+        });
+
+        if (!isValid) {
+            console.warn('Rejected unauthorized PayPal webhook call: Invalid signature');
+            return res.status(400).json({ error: 'Invalid webhook signature' });
+        }
+
+        const result = await paypalService.handleWebhookEvent(req.body);
+        res.json({ received: true, ...result });
+    } catch (err) {
+        console.error('PayPal webhook error:', err);
+        res.status(500).json({ error: 'Webhook processing failed' });
+    }
+});
+
+// ==========================================
+// RAZORPAY & WALLET ENDPOINTS
+// ==========================================
 
 /**
  * POST /api/payments/create-order

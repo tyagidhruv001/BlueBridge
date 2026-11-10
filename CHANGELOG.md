@@ -81,3 +81,26 @@
   - Created [`backend/tests/payments.test.js`](file:///c:/CODING/COMMITS/MyBlue/cynide/backend/tests/payments.test.js) with 11 automated test cases covering invalid amounts, atomic crediting, idempotency, insufficient balances, ownership validation, price matching, HMAC signature validation, order recipient matching, and 403 enforcement on direct transaction posts.
   - Executed full test suite: all 32/32 tests passing cleanly in `npm test`.
   - Frontend production build verified passing (`npm run build`).
+
+## [Phase 4: PayPal Commerce & Payment Engine] - 2026-11-10
+
+### Summary of Changes
+- **Authoritative PayPal Service (`backend/src/services/paypal.service.js`)**:
+  - Implemented PayPal REST API v2 integration for orders and checkout captures.
+  - Implemented OAuth 2.0 client credentials token management with automatic in-memory caching and token refresh.
+  - Created `createOrder` method: derives authoritative pricing from Firestore `jobs` collection, validates customer ownership, enforces single-payment constraints, creates orders via PayPal Orders v2 API, and stores pending transactions in Firestore.
+  - Created `captureOrder` method: enforces user ownership, verifies PayPal server capture status (`COMPLETED`), atomically updates transaction status and booking payment record (`payment.status = 'paid'`, `payment.method = 'paypal'`) using Firestore `db.runTransaction`.
+  - Added strict idempotency protection preventing duplicate order captures and race conditions.
+  - Added PayPal webhook signature verification (`verifyWebhookSignature`) and asynchronous event processor (`handleWebhookEvent`) for `PAYMENT.CAPTURE.COMPLETED`.
+  - Added sanitized public configuration endpoint (`getClientConfig`) ensuring client secrets are never leaked to the client.
+- **PayPal Request Validators (`backend/src/validators/paypal.validator.js`)**:
+  - `createPayPalOrderSchema`: validates required `bookingId` and supported currencies.
+  - `capturePayPalOrderSchema`: validates required `orderId` and optional `bookingId`.
+- **Payment Routes Extension (`backend/src/routes/payments.routes.js`)**:
+  - `GET /api/payments/paypal/config`: public client SDK bootstrap.
+  - `POST /api/payments/paypal/create-order`: protected by `authenticate`.
+  - `POST /api/payments/paypal/capture-order`: protected by `authenticate`.
+  - `POST /api/payments/paypal/webhook`: public webhook endpoint with signature validation.
+- **Automated Verification**:
+  - Created [`backend/tests/paypal.test.js`](file:///c:/CODING/COMMITS/MyBlue/cynide/backend/tests/paypal.test.js) with 9 automated test cases covering config sanitization, ownership checks, authoritative price derivation, capture state transitions, idempotency, and route authorization.
+  - Executed full test suite: all 41/41 tests passing cleanly in `npm test`.
