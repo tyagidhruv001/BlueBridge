@@ -1,131 +1,61 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../../config/firebase');
+const bookingsService = require('../services/bookings.service');
+const { createBookingSchema, updateBookingSchema } = require('../validators/booking.validator');
+const authenticate = require('../middlewares/auth.middleware');
 
 // @route   POST /api/jobs
-// @desc    Create a new job
-router.post('/', async (req, res) => {
+// @desc    Create a new job/booking (Protected)
+router.post('/', authenticate, async (req, res) => {
     try {
-        console.log('[JOBS] Creating new job with data:', req.body);
-
-        // Combine date/time if provided separate
-        let { customerId, customerName, customerPhone, workerId, workerName, serviceType, address, scheduledTime, date, time, price, paymentMethod } = req.body;
-
-        if (!scheduledTime && date && time) {
-            scheduledTime = `${date}T${time}:00.000Z`; // Simple ISO construction
+        const { error, value } = createBookingSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ success: false, error: error.details[0].message });
         }
 
-        // Fetch worker phone number if assigned
-        let workerPhone = '';
-        if (workerId && workerId !== 'auto-assign') {
-            try {
-                const workerUserDoc = await db.collection('users').doc(workerId).get();
-                if (workerUserDoc.exists) {
-                    workerPhone = workerUserDoc.data().phone || '';
-                }
-            } catch (e) {
-                console.error('[JOBS] Error fetching worker phone:', e);
-            }
-        }
-
-        const jobData = {
-            customerId,
-            customerName, // Save the name for display
-            customerPhone,// NEW: Save for worker actions
-            workerId,
-            workerName,   // Save worker name for display
-            workerPhone,  // NEW: Save for dashboard actions
-            serviceType,
-            address,
-            scheduledTime,
-            date,
-            time,
-            price,
-            paymentMethod,
-            status: 'pending',
-            createdAt: new Date().toISOString()
-        };
-
-        console.log('[JOBS] Saving job data to Firestore:', jobData);
-        const docRef = await db.collection('jobs').add(jobData);
-        console.log('[JOBS] Job created successfully with ID:', docRef.id);
-
-        res.status(201).json({ id: docRef.id, ...jobData });
-    } catch (error) {
-        console.error('[JOBS] Error creating job:', error);
-        res.status(500).json({ error: error.message });
+        const idempotencyKey = req.headers['idempotency-key'] || req.body.clientRequestId || null;
+        const result = await bookingsService.createBooking(req.user, value, idempotencyKey);
+        res.status(201).json(result);
+    } catch (err) {
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 // @route   GET /api/jobs
-// @desc    Get jobs for a user
-router.get('/', async (req, res) => {
+// @desc    Get jobs/bookings for authenticated user
+router.get('/', authenticate, async (req, res) => {
     try {
-        const { userId, role, type } = req.query;
+        const jobs = await bookingsService.getBookings(req.user, req.query);
+        res.status(200).json(jobs);
+    } catch (err) {
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
+    }
+});
 
-        let query = db.collection('jobs');
-
-        if (type === 'available') {
-            // Fetch all pending jobs that workers can accept
-            query = query.where('status', '==', 'pending');
-        } else if (role === 'customer') {
-            query = query.where('customerId', '==', userId);
-        } else if (role === 'worker') {
-            query = query.where('workerId', '==', userId);
-        }
-
-        const snapshot = await query.get();
-        const jobs = await Promise.all(snapshot.docs.map(async (doc) => {
-            const job = { id: doc.id, ...doc.data() };
-
-            // Join with worker data for phone number if needed
-            if (job.workerId && job.workerId !== 'auto-assign') {
-                try {
-                    const workerUserDoc = await db.collection('users').doc(job.workerId).get();
-                    if (workerUserDoc.exists) {
-                        job.workerPhone = workerUserDoc.data().phone || '';
-                    }
-                } catch (e) {
-                    console.error(`Error fetching worker info for job ${job.id}:`, e);
-                }
-            }
-            return job;
-        }));
-
-        console.log(`Jobs API: type=${type}, role=${role}, userId=${userId}, returned ${jobs.length} jobs`);
-        res.json(jobs);
-    } catch (error) {
-        console.error('Jobs API error:', error);
-        res.status(500).json({ error: error.message });
+// @route   GET /api/jobs/:id
+// @desc    Get job/booking details (Protected: participant only)
+router.get('/:id', authenticate, async (req, res) => {
+    try {
+        const job = await bookingsService.getBookingById(req.user, req.params.id);
+        res.status(200).json(job);
+    } catch (err) {
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 
 // @route   PUT /api/jobs/:id
-// @desc    Update a job (e.g. status, worker assignment)
-router.put('/:id', async (req, res) => {
+// @desc    Update a job/booking (Protected: participant only)
+router.put('/:id', authenticate, async (req, res) => {
     try {
-        const { id } = req.params;
-        const updates = req.body;
-
-        // Enrich with worker phone if workerId is being assigned/updated
-        if (updates.workerId && updates.workerId !== 'auto-assign') {
-            try {
-                const workerUserDoc = await db.collection('users').doc(updates.workerId).get();
-                if (workerUserDoc.exists) {
-                    updates.workerPhone = workerUserDoc.data().phone || '';
-                }
-            } catch (e) {
-                console.error('[JOBS] Error fetching worker phone on update:', e);
-            }
+        const { error, value } = updateBookingSchema.validate(req.body);
+        if (error) {
+            return res.status(400).json({ success: false, error: error.details[0].message });
         }
 
-        // Add updated timestamp
-        updates.updatedAt = new Date().toISOString();
-
-        await db.collection('jobs').doc(id).update(updates);
-        res.json({ id, ...updates, success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        const result = await bookingsService.updateBooking(req.user, req.params.id, value);
+        res.status(200).json(result);
+    } catch (err) {
+        res.status(err.statusCode || 500).json({ success: false, error: err.message });
     }
 });
 

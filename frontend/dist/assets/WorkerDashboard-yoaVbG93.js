@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/worker-dashboard-DvuwKgYA.js","assets/config-Cmdxbuss.js","assets/api-BnxqV7mx.js","assets/utils-B2C-mP9z.js","assets/worker-dashboard-part2-B8FgpJe6.js","assets/worker-location-tracker-CzY52fRP.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/worker-dashboard-CfVr3Zs5.js","assets/index-Cv2yNsXE.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-B9v-Jt8d.css","assets/api-DlCIqVM1.js","assets/utils-B2C-mP9z.js","assets/worker-dashboard-part2-BjEfMBhL.js","assets/worker-location-tracker-BiD0NxIT.js"])))=>i.map(i=>d[i]);
 import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from"./preload-helper-DSXbuxSR.js";var i=e(t(),1),a=`<!-- Sidebar -->\r
 <aside class="sidebar" id="sidebar">\r
     <div class="sidebar-header">\r
@@ -127,4 +127,4 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
     </div>\r
 </main>\r
 \r
-`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./worker-dashboard-DvuwKgYA.js`),__vite__mapDeps([0,1,2,3])),r(()=>import(`./worker-dashboard-part2-B8FgpJe6.js`),__vite__mapDeps([4,1,2,3])),r(()=>import(`./worker-location-tracker-CzY52fRP.js`),__vite__mapDeps([5,1,2]))}catch(e){console.error(`Failed to inject worker dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`dashboard-body`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};
+`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./worker-dashboard-CfVr3Zs5.js`),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./worker-dashboard-part2-BjEfMBhL.js`),__vite__mapDeps([7,5,1,2,3,4,6])),r(()=>import(`./worker-location-tracker-BiD0NxIT.js`),__vite__mapDeps([8,5,1,2,3,4]))}catch(e){console.error(`Failed to inject worker dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`dashboard-body`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};

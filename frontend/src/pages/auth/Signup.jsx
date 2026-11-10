@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth } from '../../utils/config';
 import { Storage } from '../../utils/utils';
 import { API } from '../../api/api';
 import '../../styles/auth.css';
@@ -68,6 +70,17 @@ const Signup = () => {
                 password,
                 role
             });
+
+            // Establish Firebase Auth session with returned token
+            if (data.token) {
+                try {
+                    const userCred = await signInWithCustomToken(auth, data.token);
+                    const idToken = await userCred.user.getIdToken();
+                    localStorage.setItem('BlueBridge_token', idToken);
+                } catch (authError) {
+                    console.warn('Firebase Custom Token sign-in warning on signup:', authError.message);
+                }
+            }
 
             const userData = {
                 uid: data.uid,

@@ -1,77 +1,31 @@
 const express = require('express');
 const router = express.Router();
-const { db, admin } = require('../../config/firebase');
+const authenticate = require('../middlewares/auth.middleware');
+const paymentsService = require('../services/payments.service');
 
 // @route   POST /api/transactions
-// @desc    Create a new transaction (credit/debit)
-router.post('/', async (req, res) => {
-    try {
-        const { userId, amount, type, description, source, referenceId } = req.body;
-
-        if (!userId || !amount || !type) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
-
-        const transactionData = {
-            userId,
-            amount: Number(amount),
-            type, // 'credit' | 'debit'
-            description: description || '',
-            source: source || 'manual', // 'job_payment', 'withdrawal'
-            referenceId: referenceId || null,
-            status: 'success', // Assuming immediate success for now
-            createdAt: new Date().toISOString()
-        };
-
-        const docRef = await db.collection('transactions').add(transactionData);
-
-        // Update User Wallet Balance (Atomic operation)
-        const userRef = db.collection('users').doc(userId); // Or 'workers' depending on who has the wallet
-        // Checking if it's a worker or customer? Usually workers have wallets. 
-        // Let's assume 'users' collection covers generic wallet or check 'workers'.
-        // For simplicity, we try to update a 'walletBalance' field on the user doc.
-
-        await db.runTransaction(async (t) => {
-            const doc = await t.get(userRef);
-            if (!doc.exists) {
-                // Try worker collection if user not found (or handle error)
-                const workerRef = db.collection('workers').doc(userId);
-                const workerDoc = await t.get(workerRef);
-                if (workerDoc.exists) {
-                    const newBalance = (workerDoc.data().walletBalance || 0) + (type === 'credit' ? amount : -amount);
-                    t.update(workerRef, { walletBalance: newBalance });
-                }
-                return;
-            }
-            const newBalance = (doc.data().walletBalance || 0) + (type === 'credit' ? amount : -amount);
-            t.update(userRef, { walletBalance: newBalance });
-        });
-
-        res.status(201).json({ id: docRef.id, ...transactionData });
-    } catch (error) {
-        console.error('Transaction Error:', error);
-        res.status(500).json({ error: error.message });
-    }
+// @desc    Direct client transaction creation is disabled for security
+router.post('/', authenticate, async (req, res) => {
+    return res.status(403).json({
+        success: false,
+        error: 'Direct transaction creation is disabled. Financial transactions must be processed via authorized payment flows.'
+    });
 });
 
 // @route   GET /api/transactions/:userId
-// @desc    Get transaction history for a user
-router.get('/:userId', async (req, res) => {
+// @desc    Get transaction history for a user (Protected: owner only)
+router.get('/:userId', authenticate, async (req, res) => {
     try {
         const { userId } = req.params;
-        const snapshot = await db.collection('transactions')
-            .where('userId', '==', userId)
-            .get();
 
-        const transactions = [];
-        snapshot.forEach(doc => {
-            transactions.push({ id: doc.id, ...doc.data() });
-        });
+        if (req.user.uid !== userId && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied: You can only view your own transactions' });
+        }
 
-        // Sort in memory to avoid complex index requirements for simple demo
-        transactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const result = await paymentsService.getTransactionHistory(userId, req.query);
 
-        res.json(transactions);
+        // Return array directly to preserve legacy frontend component contract
+        res.json(result.transactions || []);
     } catch (error) {
         console.error('Get Transactions Error:', error);
         res.status(500).json({ error: error.message });

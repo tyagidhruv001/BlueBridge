@@ -2,28 +2,28 @@ const { db } = require('../../config/firebase');
 
 exports.saveUser = async (req, res) => {
     try {
-        const {
-            uid, name, phone, email, role, profile_pic, fcm_token,
-            saved_addresses, preferences,
-            bio, reward_points, payment_methods
-        } = req.body;
+        const uid = req.user?.uid || req.body.uid;
 
         if (!uid) {
-            return res.status(400).json({ error: 'UID is required' });
+            return res.status(401).json({ error: 'Authentication required' });
         }
+
+        const {
+            name, phone, email, profile_pic, fcm_token,
+            saved_addresses, preferences,
+            bio, payment_methods
+        } = req.body;
 
         const userData = {
             uid,
             name,
             phone,
             email,
-            role, // "customer" | "worker" | "admin"
             profile_pic,
             fcm_token,
             saved_addresses: saved_addresses || [],
             preferences: preferences || {},
             bio: bio || '',
-            reward_points: reward_points || 0,
             payment_methods: payment_methods || [],
             updated_at: new Date().toISOString()
         };
@@ -33,6 +33,10 @@ exports.saveUser = async (req, res) => {
 
         if (!doc.exists) {
             userData.created_at = new Date().toISOString();
+            // Default role only on initial creation if supplied
+            if (req.body.role) {
+                userData.role = req.body.role;
+            }
         }
 
         await userRef.set(userData, { merge: true });
@@ -47,6 +51,12 @@ exports.saveUser = async (req, res) => {
 exports.getUser = async (req, res) => {
     try {
         const { uid } = req.params;
+
+        // Enforce ownership: user can only fetch their own private profile
+        if (req.user && req.user.uid !== uid && req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Access denied: You can only access your own profile' });
+        }
+
         const userDoc = await db.collection('users').doc(uid).get();
 
         if (!userDoc.exists) {
@@ -59,14 +69,11 @@ exports.getUser = async (req, res) => {
         if (userData.role === 'customer') {
             const customerDoc = await db.collection('customers').doc(uid).get();
             if (customerDoc.exists) {
-                // Merge customer details (address, verification, etc.)
-                // We prefer customerDoc fields if they exist
                 userData = { ...userData, ...customerDoc.data() };
             }
         } else if (userData.role === 'worker') {
             const workerDoc = await db.collection('workers').doc(uid).get();
             if (workerDoc.exists) {
-                // Merge worker details
                 userData = { ...userData, ...workerDoc.data() };
             }
         }
