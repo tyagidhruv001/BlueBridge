@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/customer-dashboard-CNq2q5BF.js","assets/config-Cmdxbuss.js","assets/api-BnxqV7mx.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/customer-dashboard-D-cMcaCe.js","assets/index-Cv2yNsXE.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-B9v-Jt8d.css","assets/api-DlCIqVM1.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
 import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from"./preload-helper-DSXbuxSR.js";var i=e(t(),1),a=`<!DOCTYPE html>\r
 <html lang="en">\r
 \r
@@ -509,4 +509,4 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
         </div>\r
 </body>\r
 \r
-</html>`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./customer-dashboard-CNq2q5BF.js`),__vite__mapDeps([0,1,2,3])),r(()=>import(`./customer-dashboard-interactive-DM0F6McP.js`),[]),r(()=>import(`./customer-realtime-tracking-BavXIT9-.js`),[])}catch(e){console.error(`Failed to inject customer dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`customer-dashboard-body bg-shade-dark`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};
+</html>`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./customer-dashboard-D-cMcaCe.js`),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./customer-dashboard-interactive-nDQa-_tK.js`),[]),r(()=>import(`./customer-realtime-tracking-BID4p_fO.js`),[])}catch(e){console.error(`Failed to inject customer dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`customer-dashboard-body bg-shade-dark`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};

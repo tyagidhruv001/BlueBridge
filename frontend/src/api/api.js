@@ -1,4 +1,4 @@
-import { db, collection, addDoc, query, where, orderBy, getDocs } from '../utils/config.js';
+import { auth, db, collection, addDoc, query, where, orderBy, getDocs } from '../utils/config.js';
 
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 
@@ -16,11 +16,29 @@ export async function apiFetch(path, options = {}) {
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60-second timeout for heavy AI tasks
 
     try {
-        const { headers, ...restOptions } = options;
+        const { headers = {}, ...restOptions } = options;
+
+        // Retrieve valid Firebase ID token if available
+        let authToken = null;
+        if (auth && auth.currentUser) {
+            try {
+                authToken = await auth.currentUser.getIdToken();
+            } catch (tokenErr) {
+                console.warn('Could not retrieve token from auth.currentUser:', tokenErr);
+            }
+        }
+
+        if (!authToken) {
+            authToken = localStorage.getItem('BlueBridge_token');
+        }
+
+        const authHeader = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+
         const res = await fetch(API_BASE + path, {
             headers: {
                 "Content-Type": "application/json",
-                ...(headers || {})
+                ...authHeader,
+                ...headers
             },
             signal: controller.signal,
             ...restOptions
@@ -28,10 +46,11 @@ export async function apiFetch(path, options = {}) {
         clearTimeout(timeoutId);
 
         if (!res.ok) {
+            let errorData = null;
             let errorMessage = "API Error";
             try {
-                const data = await res.json();
-                errorMessage = data.error || data.message || JSON.stringify(data);
+                errorData = await res.json();
+                errorMessage = errorData.error || errorData.message || JSON.stringify(errorData);
             } catch (e) {
                 try {
                     const text = await res.text();
@@ -40,7 +59,20 @@ export async function apiFetch(path, options = {}) {
                     errorMessage = res.statusText;
                 }
             }
-            throw new Error(errorMessage);
+
+            if (res.status === 401) {
+                console.warn(`[API 401 Unauthorized] on ${path}: ${errorMessage}`);
+                if (errorMessage.toLowerCase().includes('expired') || errorMessage.toLowerCase().includes('invalid')) {
+                    localStorage.removeItem('BlueBridge_token');
+                }
+            } else if (res.status === 403) {
+                console.warn(`[API 403 Forbidden] on ${path}: ${errorMessage}`);
+            }
+
+            const err = new Error(errorMessage);
+            err.status = res.status;
+            err.data = errorData;
+            throw err;
         }
 
         return res.json();
@@ -181,7 +213,6 @@ export const API = {
                 body: JSON.stringify(data)
             });
         },
-        // Dedicated endpoint for pushing GPS location for map display
         async updateLocation(uid, lat, lng) {
             return apiFetch(`/workers/${uid}/location`, {
                 method: 'PATCH',
@@ -212,7 +243,6 @@ export const API = {
             });
         }
     },
-    // Referrals removed as requested
     referrals: {
         async create(data) { return { success: false, message: 'Referral program disabled' }; },
         async getHistory(userId) { return []; }

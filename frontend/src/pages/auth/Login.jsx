@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { signInWithCustomToken } from 'firebase/auth';
+import { auth } from '../../utils/config';
 import { Storage } from '../../utils/utils';
 import { API } from '../../api/api';
 import '../../styles/auth.css';
@@ -53,13 +55,24 @@ const Login = () => {
         const formattedPhone = phone.startsWith('+') ? phone.replace(/\s+/g, '') : `+91${phone.replace(/\s+/g, '')}`;
 
         try {
-            // Restore standard login flow using the API utility
+            // Standard login flow using the API utility
             const data = await API.auth.login({ 
                 idToken: 'mock-token', 
                 phone: formattedPhone, 
                 password,
                 role 
             });
+
+            // Establish Firebase Auth session with returned token
+            if (data.token) {
+                try {
+                    const userCred = await signInWithCustomToken(auth, data.token);
+                    const idToken = await userCred.user.getIdToken();
+                    localStorage.setItem('BlueBridge_token', idToken);
+                } catch (authError) {
+                    console.warn('Firebase Custom Token sign-in warning:', authError.message);
+                }
+            }
 
             const userData = {
                 uid: data.user.uid,
