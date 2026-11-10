@@ -104,3 +104,21 @@
 - **Automated Verification**:
   - Created [`backend/tests/paypal.test.js`](file:///c:/CODING/COMMITS/MyBlue/cynide/backend/tests/paypal.test.js) with 9 automated test cases covering config sanitization, ownership checks, authoritative price derivation, capture state transitions, idempotency, and route authorization.
   - Executed full test suite: all 41/41 tests passing cleanly in `npm test`.
+
+## [Phase 5: Agentic Intelligence Engine (Gemini Service-Commerce)] - 2026-11-10
+
+### Summary of Changes
+- **Agentic Service-Commerce Service (`backend/src/services/aiAgent.service.js`)**:
+  - Implemented `AIAgentService` integrating Google Gemini (`gemini-flash-latest`) via `@google/generative-ai` with structured fallback.
+  - Implemented dynamic candidate worker retrieval from Firestore `users` and `workers` collections with defensive fallbacks.
+  - Implemented active customer booking status queries, allowing users to track active jobs and payment states naturally.
+  - Implemented multi-criteria worker comparison based on ratings, completed job counts, years of experience, transparent pricing breakdown, and verification badges.
+  - Implemented structured **Booking Proposal Generation**: extracts service type, worker info, scheduled time, address, and calculated price into a machine-readable JSON proposal block.
+  - Enforced Rule 17 & 18: Gemini outputs structured proposals flagged with `requiresApproval: true` and NEVER modifies database or payment records directly.
+- **Upgraded Chat Routes (`backend/src/routes/chat.routes.js`)**:
+  - Upgraded `POST /api/chat/send` to use `optionalAuth`, contextualizing chat with the customer's active bookings and profile.
+  - Returns structured `proposal`, `recommendations`, `comparison`, and `activeBookings` while maintaining backward-compatible string `reply`.
+- **Automated Verification**:
+  - Created [`backend/tests/aiAgent.test.js`](file:///c:/CODING/COMMITS/MyBlue/cynide/backend/tests/aiAgent.test.js) covering natural language recommendations, worker comparisons, booking proposals with approval flags, active booking tracking, and HTTP route integration.
+  - Executed full test suite: all 46/46 tests passing cleanly in `npm test`.
+  - Frontend production build verified passing (`npm run build`).
