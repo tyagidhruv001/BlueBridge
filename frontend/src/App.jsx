@@ -24,8 +24,10 @@ const AddMoneyDemo = lazy(() => import('./pages/wallet/AddMoneyDemo'));
 
 // Loading Fallback Component
 const PageLoader = () => (
-  <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', background: '#05060a' }}>
-    <div style={{ color: '#00d2ff', fontSize: '1.2rem', fontFamily: 'sans-serif' }}>Loading...</div>
+  <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: 'var(--color-background)', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ width: '28px', height: '28px', border: '3px solid var(--color-border)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
+    <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-sans)', fontWeight: 500 }}>Loading BlueBridge...</span>
+    <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
   </div>
 );
 

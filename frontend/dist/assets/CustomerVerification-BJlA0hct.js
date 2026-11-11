@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/onboarding-customer-verification-CbgczF1w.js","assets/index-CLbRPeYq.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-BE521yyh.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/onboarding-customer-verification-DNeDC13N.js","assets/index-CearYG7O.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-CKrHpOrU.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
 import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from"./preload-helper-DSXbuxSR.js";/* empty css                   *//* empty css                     */var i=e(t(),1),a=`﻿<!DOCTYPE html>\r
 <html lang="en">\r
 \r
@@ -124,4 +124,4 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
 </body>\r
 \r
 </html>\r
-`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./onboarding-customer-verification-CbgczF1w.js`),__vite__mapDeps([0,1,2,3,4,5,6]))}catch(e){console.error(`Failed to inject scripts for CustomerVerification:`,e)}},[]),(0,o.jsx)(`div`,{dangerouslySetInnerHTML:{__html:a}}));export{s as default};
+`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./onboarding-customer-verification-DNeDC13N.js`),__vite__mapDeps([0,1,2,3,4,5,6]))}catch(e){console.error(`Failed to inject scripts for CustomerVerification:`,e)}},[]),(0,o.jsx)(`div`,{dangerouslySetInnerHTML:{__html:a}}));export{s as default};
