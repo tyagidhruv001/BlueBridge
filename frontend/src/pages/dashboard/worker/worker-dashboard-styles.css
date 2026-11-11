@@ -1464,25 +1464,21 @@ input:checked+.toggle-slider:before {
     max-width: 100%;
 }
 
-/* === GLASSMORPHISM WITH PURPLE TINT === */
+/* === CLEAN EDITORIAL WORKER THEME === */
 :root {
-    --glass-purple-tint: rgba(45, 27, 78, 0.6);
-    /* Deep Purple from image */
-    --glass-purple-border: rgba(130, 100, 255, 0.15);
+    --glass-purple-tint: var(--color-surface, #FFFFFF);
+    --glass-purple-border: var(--color-border, #E5E9E5);
 }
 
 .sidebar {
-    background: linear-gradient(180deg, rgba(20, 25, 35, 0.8) 0%, rgba(45, 27, 78, 0.4) 100%) !important;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid var(--glass-purple-border) !important;
+    background: var(--color-surface, #FFFFFF) !important;
+    border-right: 1px solid var(--color-border, #E5E9E5) !important;
 }
 
 .topbar {
-    background: rgba(20, 25, 35, 0.7) !important;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--glass-purple-border) !important;
+    background: var(--color-surface, #FFFFFF) !important;
+    border-bottom: 1px solid var(--color-border, #E5E9E5) !important;
+    box-shadow: var(--shadow-sm);
 }
 
 .job-card,
@@ -1490,122 +1486,108 @@ input:checked+.toggle-slider:before {
 .status-card,
 .schedule-day,
 .job-history-item {
-    background: linear-gradient(135deg, rgba(30, 35, 45, 0.6) 0%, rgba(45, 27, 78, 0.25) 100%) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-purple-border) !important;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    border-radius: var(--radius-xl, 16px);
+    box-shadow: var(--shadow-sm) !important;
+    color: var(--color-text-primary, #17201F);
 }
 
 .job-request-item,
 .active-job-item,
 .review-item,
 .earnings-item {
-    background: rgba(35, 40, 50, 0.4) !important;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-purple-border) !important;
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    border-radius: var(--radius-lg, 12px);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-text-primary, #17201F);
 }
 
-/* Subtle gloss on hover */
 .job-card:hover,
 .earnings-summary-card:hover {
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6) !important;
-    border-color: rgba(255, 255, 255, 0.15) !important;
-    background: linear-gradient(135deg, rgba(20, 20, 20, 0.8) 0%, rgba(30, 30, 30, 0.6) 100%) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--color-border, #E5E9E5) !important;
+    background: var(--color-surface, #FFFFFF) !important;
+    transform: translateY(-2px);
 }
 
-/* === SPECIFIC OVERRIDES FOR USER REQUESTED RECTANGLES === */
 .dashboard-overview-section {
-    background: linear-gradient(180deg, rgba(5, 5, 5, 0.8) 0%, rgba(15, 15, 15, 0.6) 100%) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border-dark) !important;
-    /* Colorful Shadow Base */
-    box-shadow: 0 4px 20px rgba(100, 100, 255, 0.15),
-        0 0 0 1px rgba(100, 100, 255, 0.05) !important;
-    color: var(--text-primary);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    box-shadow: var(--shadow-sm) !important;
+    border-radius: var(--radius-xl);
+    color: var(--color-text-primary, #17201F);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .dashboard-overview-section:hover {
-    transform: translateY(-4px);
-    /* Vibrant Hover Shadow */
-    box-shadow: 0 15px 35px rgba(120, 100, 255, 0.25),
-        0 5px 15px rgba(255, 0, 150, 0.15) !important;
-    border-color: rgba(150, 150, 255, 0.3) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--color-border, #E5E9E5) !important;
 }
 
 .stat-card {
-    background: linear-gradient(135deg, rgba(10, 10, 10, 0.7) 0%, rgba(20, 20, 20, 0.5) 100%) !important;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border-dark) !important;
-    /* Colorful Shadow Base */
-    box-shadow: 0 4px 15px rgba(0, 200, 255, 0.1) !important;
-    transition: all 0.3s ease;
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm) !important;
+    color: var(--color-text-primary, #17201F);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .stat-card:hover {
-    transform: translateY(-5px);
-    background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(30, 30, 30, 0.7) 100%) !important;
-    /* Vibrant Hover Shadow matching the type (generic colorful mix here) */
-    box-shadow: 0 12px 30px rgba(50, 150, 255, 0.3),
-        0 4px 10px rgba(200, 50, 255, 0.2) !important;
-    border-color: rgba(100, 200, 255, 0.3) !important;
+    transform: translateY(-2px);
+    background: var(--color-surface, #FFFFFF) !important;
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--color-border, #E5E9E5) !important;
 }
 
-/* Ensure text legibility on dark glass */
 .stat-label,
 .overview-item span {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--color-text-secondary, #68736F) !important;
 }
 
 .stat-value,
 .overview-item div {
-    color: #ffffff !important;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    color: var(--color-text-primary, #17201F) !important;
+    text-shadow: none;
 }
 
 .dashboard-card {
-    background: linear-gradient(135deg, rgba(10, 10, 10, 0.7) 0%, rgba(20, 20, 20, 0.5) 100%) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border-dark) !important;
-    color: var(--text-primary);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    color: var(--color-text-primary, #17201F);
     border-radius: var(--radius-xl);
-    /* Colorful Shadow Base */
-    box-shadow: 0 4px 20px rgba(150, 50, 255, 0.1) !important;
-    transition: all 0.4s ease;
+    box-shadow: var(--shadow-sm) !important;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .dashboard-card:hover {
-    transform: translateY(-4px);
-    /* Vibrant Hover Shadow */
-    box-shadow: 0 15px 40px rgba(100, 50, 255, 0.25),
-        0 5px 15px rgba(50, 200, 255, 0.15) !important;
-    border-color: rgba(150, 100, 255, 0.3) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md) !important;
+    border-color: var(--color-border, #E5E9E5) !important;
 }
 
 .dashboard-card .card-header h2 {
-    color: #ffffff !important;
-    opacity: 0.9;
+    color: var(--color-text-primary, #17201F) !important;
+    opacity: 1;
 }
 
-/* === LOGO REDESIGN === */
+/* === LOGO === */
 .logo {
     display: flex;
     align-items: center;
     gap: 0.6rem;
     padding: 0.5rem;
     border-radius: var(--radius-lg);
-    transition: all 0.3s ease;
+    transition: all 0.2s;
     background: transparent;
     border: none;
 }
 
 .logo:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: #F1F4F1;
 }
 
 .logo-icon {
@@ -1614,90 +1596,83 @@ input:checked+.toggle-slider:before {
     justify-content: center;
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, #00c6ff, #0072ff);
-    border-radius: 10px;
+    background: var(--color-primary, #245BDB);
+    border-radius: 8px;
     color: white;
     font-size: 1.1rem;
-    box-shadow: 0 4px 15px rgba(0, 114, 255, 0.4);
-    transform: rotate(-10deg);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
 }
 
 .logo:hover .logo-icon {
-    transform: rotate(0deg) scale(1.1);
-    box-shadow: 0 0 25px rgba(0, 114, 255, 0.6);
+    transform: scale(1.05);
 }
 
 .logo-text {
-    font-family: 'Outfit', sans-serif;
+    font-family: var(--font-display);
     font-size: 1.4rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    background: linear-gradient(to right, #ffffff 0%, #a5b4fc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    color: var(--color-text-primary, #17201F);
+    background: none;
+    -webkit-text-fill-color: var(--color-text-primary, #17201F);
+    text-shadow: none;
 }
 
-/* === INNER PAGE THEME OVERRIDES (Deep Purple) === */
+/* === INNER PAGE THEME OVERRIDES === */
 
 .stat-badge {
-    background: var(--glass-purple-gradient) !important;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border: 1px solid var(--glass-border-light) !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-badge-value {
-    color: #ffffff !important;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    color: var(--color-text-primary, #17201F) !important;
+    text-shadow: none;
 }
 
 .stat-badge-label {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--color-text-secondary, #68736F) !important;
 }
 
-/* Ensure Page Headers pop */
 .page-title {
-    color: #ffffff !important;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: var(--color-text-primary, #17201F) !important;
+    text-shadow: none;
 }
 
 .page-subtitle {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: var(--color-text-secondary, #68736F) !important;
 }
 
 /* Empty States */
 .empty-state,
 .empty-state-small {
-    background: rgba(40, 20, 70, 0.4) !important;
-    backdrop-filter: blur(10px);
-    border: 1px dashed rgba(255, 255, 255, 0.1) !important;
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px dashed var(--color-border, #E5E9E5) !important;
     border-radius: var(--radius-lg);
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--color-text-secondary, #68736F) !important;
 }
 
 /* Inputs and Selects on inner pages */
 .filter-select,
 .period-select,
 .setting-item {
-    background: rgba(30, 15, 60, 0.6) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: white !important;
-    backdrop-filter: blur(8px);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    color: var(--color-text-primary, #17201F) !important;
 }
 
 /* Education/Profile cards if not covered */
 .education-entry,
 .profile-section {
-    background: rgba(40, 20, 70, 0.5) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    backdrop-filter: blur(12px);
+    background: var(--color-surface, #FFFFFF) !important;
+    border: 1px solid var(--color-border, #E5E9E5) !important;
+    color: var(--color-text-primary, #17201F);
 }
 
 /* ============================================
-   NEW WORKER OVERVIEW GRID STYLES
+   WORKER OVERVIEW GRID STYLES
    ============================================ */
 
 .overview-grid {
@@ -1708,55 +1683,40 @@ input:checked+.toggle-slider:before {
 }
 
 .overview-item-card {
-    background: rgba(10, 12, 18, 0.82);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--color-border, #E5E9E5);
     border-radius: var(--radius-xl);
     padding: 1.25rem 1.5rem;
-    min-height: 200px;
+    min-height: 180px;
     position: relative;
     overflow: hidden;
-    transition: all var(--transition-base);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
     display: flex;
     align-items: center;
     gap: var(--spacing-lg);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-sm);
     cursor: pointer;
 }
 
 .overview-item-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #3b82f6, #2563eb);
-    transform: scaleX(0);
-    transform-origin: left;
-    transition: transform var(--transition-base);
-    z-index: 2;
-}
-
-.overview-item-card:hover::before {
-    transform: scaleX(1);
+    display: none !important;
 }
 
 .overview-item-card:hover {
-    transform: translateY(-5px);
-    background: rgba(15, 17, 24, 0.9);
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 130, 246, 0.4);
+    transform: translateY(-2px);
+    background: var(--color-surface, #FFFFFF);
+    box-shadow: var(--shadow-md);
+    border-color: var(--color-border, #E5E9E5);
 }
 
 .overview-item-card .icon-box {
-    width: 64px;
-    height: 64px;
+    width: 56px;
+    height: 56px;
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 2rem;
+    font-size: 1.75rem;
     flex-shrink: 0;
 }
 
@@ -1765,29 +1725,29 @@ input:checked+.toggle-slider:before {
 }
 
 .overview-item-card.blue .icon-box {
-    background: rgba(0, 210, 255, 0.1);
-    color: #00d2ff;
-    box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
+    background: rgba(36, 91, 219, 0.08);
+    color: var(--color-primary, #245BDB);
+    box-shadow: none;
 }
 
 .overview-item-card.green .icon-box {
-    background: rgba(0, 255, 136, 0.1);
-    color: #00ff88;
-    box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+    background: rgba(24, 134, 91, 0.08);
+    color: var(--color-success, #18865B);
+    box-shadow: none;
 }
 
 .overview-item-card.orange .icon-box {
-    background: rgba(255, 136, 0, 0.1);
-    color: #ff8800;
-    box-shadow: 0 0 20px rgba(255, 136, 0, 0.1);
+    background: rgba(217, 149, 50, 0.08);
+    color: var(--color-warning, #D99532);
+    box-shadow: none;
 }
 
 .overview-item-card .label {
-    font-size: 0.65rem;
-    color: var(--text-tertiary);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary, #68736F);
     text-transform: uppercase;
-    letter-spacing: 2px;
-    font-weight: 700;
+    letter-spacing: 0.5px;
+    font-weight: 600;
     margin-bottom: var(--spacing-xs);
 }
 
@@ -1799,9 +1759,9 @@ input:checked+.toggle-slider:before {
 }
 
 .overview-item-card .value {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--color-text-primary, #17201F);
     line-height: 1.1;
     letter-spacing: -0.5px;
 }
@@ -1809,43 +1769,23 @@ input:checked+.toggle-slider:before {
 .overview-item-card .sub-value {
     font-size: 0.75rem;
     font-weight: 600;
-    opacity: 0.8;
+    opacity: 0.9;
 }
 
 .overview-item-card.blue .sub-value {
-    color: #00d2ff;
+    color: var(--color-primary, #245BDB);
 }
 
 .overview-item-card.green .sub-value {
-    color: #4ade80;
+    color: var(--color-success, #18865B);
 }
 
 .overview-item-card.orange .sub-value {
-    color: #fb923c;
+    color: var(--color-warning, #D99532);
 }
 
 .overview-item-card .card-glow {
-    position: absolute;
-    top: -20%;
-    right: -20%;
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    filter: blur(40px);
-    opacity: 0.12;
-    pointer-events: none;
-}
-
-.overview-item-card.blue .card-glow {
-    background: #ff4444;
-}
-
-.overview-item-card.green .card-glow {
-    background: #ff3333;
-}
-
-.overview-item-card.orange .card-glow {
-    background: #ff5555;
+    display: none !important;
 }
 
 /* Responsive Overview */

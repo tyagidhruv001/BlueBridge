@@ -38,12 +38,11 @@
 }
 
 .verification-card {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: var(--color-surface, #FFFFFF);
+    border-radius: var(--radius-xl, 16px);
+    padding: 2.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--color-border, #E5E9E5);
 }
 
 .verification-header {
@@ -52,13 +51,13 @@
 }
 
 .verification-header h2 {
-    color: #2d3748;
+    color: var(--color-text-primary, #17201F);
     font-size: 1.8rem;
     margin-bottom: 0.5rem;
 }
 
 .verification-header p {
-    color: #718096;
+    color: var(--color-text-secondary, #68736F);
     font-size: 0.95rem;
 }
 
@@ -70,50 +69,51 @@
 .document-type-selector label {
     display: block;
     font-weight: 600;
-    color: #2d3748;
+    color: var(--color-text-primary, #17201F);
     margin-bottom: 0.5rem;
 }
 
 .document-type-selector select {
     width: 100%;
     padding: 0.75rem;
-    border: 2px solid #e2e8f0;
-    border-radius: 8px;
+    border: 1px solid var(--color-border, #E5E9E5);
+    border-radius: var(--radius-md, 8px);
     font-size: 1rem;
-    background: white;
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text-primary, #17201F);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .document-type-selector select:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--color-primary, #245BDB);
+    box-shadow: 0 0 0 3px rgba(36, 91, 219, 0.12);
 }
 
 /* Upload Area */
 .upload-area {
-    border: 3px dashed #cbd5e0;
-    border-radius: 12px;
+    border: 2px dashed var(--color-border, #E5E9E5);
+    border-radius: var(--radius-lg, 12px);
     padding: 3rem 2rem;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    transition: all 0.2s ease;
+    background: var(--color-background, #F8F9F7);
     position: relative;
     overflow: hidden;
 }
 
 .upload-area:hover {
-    border-color: #667eea;
-    background: linear-gradient(135deg, #edf2f7 0%, #e6fffa 100%);
+    border-color: var(--color-primary, #245BDB);
+    background: var(--color-surface, #FFFFFF);
     transform: translateY(-2px);
 }
 
 .upload-area.drag-over {
-    border-color: #48bb78;
-    background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
-    transform: scale(1.02);
+    border-color: var(--color-success, #18865B);
+    background: rgba(24, 134, 91, 0.05);
+    transform: scale(1.01);
 }
 
 .upload-area.uploading {

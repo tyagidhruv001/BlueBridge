@@ -10,30 +10,24 @@
     padding: var(--spacing-lg);
     position: relative;
     overflow: hidden;
+    background: var(--color-background, #F8F9F7);
 }
 
 .onboarding-container::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(at 0% 0%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, var(--primary-800) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, var(--primary-800) 0px, transparent 50%);
-    opacity: 0.4;
-    z-index: 0;
+    display: none !important;
 }
-
 
 .onboarding-card {
     width: 100%;
     max-width: 700px;
     padding: var(--spacing-3xl);
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-xl, 16px);
     position: relative;
     z-index: 2;
-    animation: slideUp 0.6s ease-out;
+    background: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--color-border, #E5E9E5);
+    box-shadow: var(--shadow-md);
+    animation: slideUp 0.4s ease-out;
 }
 
 .onboarding-header {

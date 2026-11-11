@@ -1,85 +1,88 @@
 ﻿/* ============================================
    BlueBridge - DESIGN SYSTEM & THEME
-   Modern Blue-Collar Platform
+   Editorial, Clean, Trustworthy Service Marketplace
    ============================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-    /* === Brand Colors === */
-    --primary-hue: 220;
-    --primary-sat: 85%;
-    --primary-light: 55%;
+    /* === Required Clean Light Palette === */
+    --color-background: #F8F9F7;
+    --color-surface: #FFFFFF;
+    --color-text-primary: #17201F;
+    --color-text-secondary: #68736F;
+    --color-primary: #245BDB;
+    --color-border: #E5E9E5;
+    --color-success: #18865B;
+    --color-warning: #D99532;
 
-    --primary-50: hsl(var(--primary-hue), var(--primary-sat), 95%);
-    --primary-100: hsl(var(--primary-hue), var(--primary-sat), 85%);
-    --primary-200: hsl(var(--primary-hue), var(--primary-sat), 75%);
-    --primary-300: hsl(var(--primary-hue), var(--primary-sat), 65%);
-    --primary-400: hsl(var(--primary-hue), var(--primary-sat), 60%);
-    --primary-500: hsl(var(--primary-hue), var(--primary-sat), var(--primary-light));
-    --primary-600: hsl(var(--primary-hue), var(--primary-sat), 45%);
-    --primary-700: hsl(var(--primary-hue), var(--primary-sat), 35%);
-    --primary-800: hsl(var(--primary-hue), var(--primary-sat), 25%);
-    --primary-900: hsl(var(--primary-hue), var(--primary-sat), 15%);
+    /* === Global Framework Aliases === */
+    --bg-primary: #F8F9F7;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #F2F4F2;
+    --bg-elevated: #FFFFFF;
 
-    /* === Accent Colors === */
-    --accent-orange: hsl(25, 95%, 58%);
-    --accent-orange-light: hsl(25, 95%, 68%);
-    --accent-orange-dark: hsl(25, 95%, 48%);
+    --text-primary: #17201F;
+    --text-secondary: #68736F;
+    --text-tertiary: #8C9692;
+    --text-disabled: #B4BDB9;
 
-    --accent-green: hsl(142, 71%, 45%);
-    --accent-green-light: hsl(142, 71%, 55%);
-    --accent-green-dark: hsl(142, 71%, 35%);
+    --border-primary: #E5E9E5;
+    --border-secondary: #F0F3F0;
+    --border-focus: #245BDB;
 
-    --accent-purple: hsl(270, 70%, 60%);
-    --accent-purple-light: hsl(270, 70%, 70%);
-    --accent-purple-dark: hsl(270, 70%, 50%);
+    /* === Brand Shades === */
+    --primary-50: #EDF3FE;
+    --primary-100: #DBE7FD;
+    --primary-200: #B7CEFB;
+    --primary-300: #93B5F9;
+    --primary-400: #4B85F4;
+    --primary-500: #245BDB;
+    --primary-600: #1B4ABA;
+    --primary-700: #13399A;
+    --primary-800: #0C287A;
+    --primary-900: #071959;
 
     /* === Semantic Colors === */
-    --success: hsl(142, 71%, 45%);
-    --warning: hsl(45, 93%, 47%);
-    --error: hsl(0, 84%, 60%);
-    --info: hsl(199, 89%, 48%);
+    --success: #18865B;
+    --warning: #D99532;
+    --error: #D9383A;
+    --info: #245BDB;
 
-    /* === Neutral Colors (Dark Mode Optimized) === */
-    --gray-50: hsl(220, 20%, 98%);
-    --gray-100: hsl(220, 18%, 94%);
-    --gray-200: hsl(220, 16%, 88%);
-    --gray-300: hsl(220, 14%, 75%);
-    --gray-400: hsl(220, 12%, 60%);
-    --gray-500: hsl(220, 10%, 45%);
-    --gray-600: hsl(220, 12%, 35%);
-    --gray-700: hsl(220, 14%, 25%);
-    --gray-800: hsl(220, 16%, 18%);
-    --gray-900: hsl(220, 18%, 12%);
-    --gray-950: hsl(220, 20%, 8%);
+    --accent-orange: #D99532;
+    --accent-orange-light: #F3B359;
+    --accent-orange-dark: #B5751C;
 
-    /* === Background & Surface === */
-    --bg-primary: hsl(220, 18%, 10%);
-    --bg-secondary: hsl(220, 16%, 14%);
-    --bg-tertiary: hsl(220, 14%, 18%);
-    --bg-elevated: hsl(220, 16%, 16%);
+    --accent-green: #18865B;
+    --accent-green-light: #26A573;
+    --accent-green-dark: #126343;
 
-    /* === Text Colors === */
-    --text-primary: hsl(220, 20%, 98%);
-    --text-secondary: hsl(220, 14%, 75%);
-    --text-tertiary: hsl(220, 12%, 60%);
-    --text-disabled: hsl(220, 10%, 45%);
+    --accent-purple: #5A48DE;
+    --accent-purple-light: #7E70ED;
+    --accent-purple-dark: #3F30B5;
 
-    /* === Borders === */
-    --border-primary: hsl(220, 14%, 25%);
-    --border-secondary: hsl(220, 12%, 20%);
-    --border-focus: var(--primary-500);
+    /* === Neutral Scale === */
+    --gray-50: #F8F9F7;
+    --gray-100: #F2F4F2;
+    --gray-200: #E5E9E5;
+    --gray-300: #D1D8D2;
+    --gray-400: #95A19D;
+    --gray-500: #68736F;
+    --gray-600: #48524F;
+    --gray-700: #2E3633;
+    --gray-800: #1E2321;
+    --gray-900: #17201F;
+    --gray-950: #0F1413;
 
-    /* === Shadows === */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.5);
-    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    /* === Tactile Light Shadows (No Neon Glows) === */
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
+    --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+    --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+    --shadow-xl: 0 20px 24px -4px rgba(16, 24, 40, 0.1), 0 8px 8px -4px rgba(16, 24, 40, 0.04);
+    --shadow-2xl: 0 24px 48px -12px rgba(16, 24, 40, 0.15);
 
-    --shadow-glow: 0 0 20px rgba(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.3);
-    --shadow-glow-strong: 0 0 30px rgba(var(--primary-hue), var(--primary-sat), var(--primary-light), 0.5);
+    --shadow-glow: none;
+    --shadow-glow-strong: none;
 
     /* === Spacing === */
     --spacing-xs: 0.25rem;
@@ -95,12 +98,12 @@
     --radius-md: 0.5rem;
     --radius-lg: 0.75rem;
     --radius-xl: 1rem;
-    --radius-2xl: 1.5rem;
+    --radius-2xl: 1.25rem;
     --radius-full: 9999px;
 
     /* === Typography === */
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-display: 'Outfit', var(--font-sans);
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-display: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
@@ -116,7 +119,6 @@
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-bounce: 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     /* === Z-Index === */
     --z-dropdown: 1000;
@@ -128,78 +130,78 @@
     --z-tooltip: 1070;
 }
 
-/* === Light Mode Override === */
-[data-theme="light"] {
-    --bg-primary: hsl(220, 20%, 98%);
-    --bg-secondary: hsl(220, 18%, 94%);
-    --bg-tertiary: hsl(220, 16%, 88%);
-    --bg-elevated: hsl(0, 0%, 100%);
+/* === Optional Dark Mode Override === */
+[data-theme="dark"] {
+    --color-background: #141716;
+    --color-surface: #1E2321;
+    --color-text-primary: #F0F4F2;
+    --color-text-secondary: #9AA6A1;
+    --color-primary: #3B74FF;
+    --color-border: #2E3633;
+    --color-success: #26A573;
+    --color-warning: #E8A843;
 
-    --text-primary: hsl(220, 18%, 12%);
-    --text-secondary: hsl(220, 12%, 35%);
-    --text-tertiary: hsl(220, 10%, 45%);
-    --text-disabled: hsl(220, 12%, 60%);
+    --bg-primary: #141716;
+    --bg-secondary: #1E2321;
+    --bg-tertiary: #262C29;
+    --bg-elevated: #1E2321;
 
-    --border-primary: hsl(220, 16%, 88%);
-    --border-secondary: hsl(220, 18%, 94%);
+    --text-primary: #F0F4F2;
+    --text-secondary: #9AA6A1;
+    --text-tertiary: #6E7B76;
+    --text-disabled: #48524F;
 
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --border-primary: #2E3633;
+    --border-secondary: #242B28;
+    --border-focus: #3B74FF;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 12px 20px rgba(0, 0, 0, 0.5);
+    --shadow-xl: 0 20px 28px rgba(0, 0, 0, 0.6);
 }
 
-/* === Gradient Definitions === */
+/* Restrained Editorial Gradients */
 .gradient-primary {
-    background: linear-gradient(135deg, var(--primary-500) 0%, var(--primary-700) 100%);
+    background: var(--color-primary);
 }
 
 .gradient-accent {
-    background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-purple) 100%);
+    background: var(--color-primary);
 }
 
 .gradient-success {
-    background: linear-gradient(135deg, var(--accent-green) 0%, var(--success) 100%);
+    background: var(--color-success);
 }
 
 .gradient-mesh {
-    background:
-        radial-gradient(at 0% 0%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 100% 0%, var(--primary-800) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, var(--primary-900) 0px, transparent 50%),
-        radial-gradient(at 0% 100%, var(--primary-800) 0px, transparent 50%),
-        var(--bg-primary);
+    background: var(--color-background);
 }
 
-/* === Glassmorphism === */
+/* Crisp Clean Card Surface (No excessive glassmorphism) */
 .glass {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
 }
 
 .glass-strong {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-sm);
 }
-/* Additional Button Colors if not present */
+
 .btn-info {
-    background-color: var(--info);
+    background-color: var(--color-primary);
     color: white;
 }
 .btn-info:hover {
-    filter: brightness(1.1);
+    filter: brightness(0.92);
 }
 
 .btn-warning {
-    background-color: var(--warning);
+    background-color: var(--color-warning);
     color: white;
 }
 .btn-warning:hover {
-    filter: brightness(1.1);
+    filter: brightness(0.92);
 }
-
