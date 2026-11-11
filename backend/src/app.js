@@ -15,6 +15,8 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 app.get("/", (req, res) => {
     res.json({ message: "BlueBridge Backend is running!", status: "online" });
 });

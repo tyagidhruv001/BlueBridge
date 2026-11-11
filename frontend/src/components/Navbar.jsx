@@ -62,6 +62,7 @@ const Navbar = () => {
                                     </svg>
                                 )}
                             </button>
+                            <Link to="/auth/role-select?mode=login" style={{ color: 'var(--color-text-primary)', fontWeight: 600, textDecoration: 'none', fontSize: '0.95rem' }}>Login</Link>
                             <Link to="/auth/role-select?mode=signup" className="btn-neon-orange" style={{ padding: '0.6rem 1.5rem', fontSize: '1rem', borderRadius: '30px', fontWeight: '600', textDecoration: 'none' }}>Get Started</Link>
                         </div>
 

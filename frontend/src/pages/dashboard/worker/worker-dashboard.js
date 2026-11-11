@@ -218,6 +218,7 @@ let dashboardData = {
 };
 
 async function initDashboard() {
+  window.initDashboard = initDashboard;
   userData = Storage.get('BlueBridge_user');
 
   // Retry session detection (useful if storage is still being updated after redirect)

@@ -36,6 +36,13 @@ function init() {
         window.location.href = '/auth/login';
         return;
     }
+
+window.initCustomerDashboard = function(force = false) {
+    if (force) {
+        isInitialized = false;
+    }
+    init();
+};
     console.log('[DASHBOARD] User authenticated, continuing initialization');
 
     // MIGRATION: Clear old mock bookings to avoid "nothing changed" confusion

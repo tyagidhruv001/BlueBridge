@@ -22,6 +22,7 @@ if (document.readyState === 'loading') {
 }
 
 function initBooking() {
+    window.initBooking = initBooking;
     const user = Storage.get('BlueBridge_user');
     if (!user || (!user.uid && !user.user_id)) {
         alert('Please log in first to book a service.');

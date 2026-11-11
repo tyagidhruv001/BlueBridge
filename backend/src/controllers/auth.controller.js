@@ -209,7 +209,32 @@ exports.getDemoUser = async (req, res) => {
         const snapshot = await db.collection('users').where('role', '==', role).limit(1).get();
         
         if (snapshot.empty) {
-            return res.status(404).json({ error: `No real ${role} found in Firestore. Please create one first.` });
+            const demoUid = `demo-${role}-101`;
+            const defaultDemo = {
+                uid: demoUid,
+                name: role === 'customer' ? 'Aarav Patel (Demo)' : 'Ramesh Kumar (Demo)',
+                phone: role === 'customer' ? '+919876543210' : '+919876543211',
+                email: `${role}.demo@bluebridge.in`,
+                role: role,
+                is_verified: true,
+                wallet: { balance: 2500 }
+            };
+            const profileData = role === 'worker' ? {
+                category: 'plumber',
+                profession: 'plumber',
+                skills: ['Plumber', 'Pipe Repair'],
+                rating_avg: 4.8,
+                experience_years: 5,
+                base_price: 450,
+                is_online: true
+            } : {
+                address: 'Flat 402, Green View Apartments, Mumbai',
+                city: 'Mumbai',
+                pincode: '400001'
+            };
+            return res.json({
+                user: { ...defaultDemo, loggedIn: true, isVerified: true, profile: profileData }
+            });
         }
         
         const userData = snapshot.docs[0].data();

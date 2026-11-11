@@ -233,6 +233,9 @@ export const API = {
                 body: JSON.stringify(userData)
             });
         },
+        async getDemoUser(role) {
+            return apiFetch(`/auth/demo-user/${role}`);
+        },
         getProfile: async (userId) => {
             return apiFetch(`/users/${userId}`);
         },

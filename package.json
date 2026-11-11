@@ -1,0 +1,14 @@
+{
+  "name": "bluebridge",
+  "version": "1.0.0",
+  "description": "BlueBridge - Trusted blue-collar services marketplace",
+  "private": true,
+  "scripts": {
+    "start": "node -e \"const { spawn } = require('child_process'); spawn('npm', ['--prefix', 'backend', 'start'], { stdio: 'inherit', shell: true }); spawn('npm', ['--prefix', 'frontend', 'run', 'dev'], { stdio: 'inherit', shell: true });\"",
+    "dev": "node -e \"const { spawn } = require('child_process'); spawn('npm', ['--prefix', 'backend', 'start'], { stdio: 'inherit', shell: true }); spawn('npm', ['--prefix', 'frontend', 'run', 'dev'], { stdio: 'inherit', shell: true });\"",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend start",
+    "build": "npm --prefix frontend run build",
+    "test": "npm --prefix backend test"
+  }
+}

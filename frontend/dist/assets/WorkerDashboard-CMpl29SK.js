@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/worker-dashboard-Bxgdl3XX.js","assets/index-CearYG7O.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-CKrHpOrU.js","assets/utils-B2C-mP9z.js","assets/worker-dashboard-part2-Br5ISwbX.js","assets/worker-location-tracker-BPrFrtoQ.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/worker-dashboard-BWJmjcQH.js","assets/index-UKgaU8Jp.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-71HrYE3I.js","assets/utils-B2C-mP9z.js","assets/worker-dashboard-part2-DlMDucO8.js","assets/worker-location-tracker-_xh4xHFs.js"])))=>i.map(i=>d[i]);
 import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from"./preload-helper-DSXbuxSR.js";var i=e(t(),1),a=`<!-- Sidebar -->\r
 <aside class="sidebar" id="sidebar">\r
     <div class="sidebar-header">\r
@@ -127,4 +127,4 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
     </div>\r
 </main>\r
 \r
-`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./worker-dashboard-Bxgdl3XX.js`),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./worker-dashboard-part2-Br5ISwbX.js`),__vite__mapDeps([7,5,1,2,3,4,6])),r(()=>import(`./worker-location-tracker-BPrFrtoQ.js`),__vite__mapDeps([8,5,1,2,3,4]))}catch(e){console.error(`Failed to inject worker dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`dashboard-body`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};
+`,o=n(),s=()=>((0,i.useEffect)(()=>{let e=!0;try{r(()=>import(`./worker-dashboard-BWJmjcQH.js`).then(()=>{e&&typeof window.initDashboard==`function`&&window.initDashboard()}),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./worker-dashboard-part2-DlMDucO8.js`),__vite__mapDeps([7,5,1,2,3,4,6])),r(()=>import(`./worker-location-tracker-_xh4xHFs.js`),__vite__mapDeps([8,5,1,2,3,4]))}catch(e){console.error(`Failed to inject worker dashboard modules:`,e)}return()=>{e=!1}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`dashboard-body`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};

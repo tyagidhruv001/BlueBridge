@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/customer-dashboard-BAQzeaKT.js","assets/index-CearYG7O.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-CKrHpOrU.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/customer-dashboard-BM2T8Ib9.js","assets/index-UKgaU8Jp.js","assets/jsx-runtime-BnxRlLMJ.js","assets/preload-helper-DSXbuxSR.js","assets/index-D6fxitQG.css","assets/api-71HrYE3I.js","assets/utils-B2C-mP9z.js"])))=>i.map(i=>d[i]);
 import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from"./preload-helper-DSXbuxSR.js";var i=e(t(),1),a=`<!DOCTYPE html>\r
 <html lang="en">\r
 \r
@@ -13,9 +13,6 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
     \r
     <!-- Icons -->\r
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">\r
-    \r
-    <!-- Base Styles -->\r
-    <link rel="stylesheet" href="../../../styles/globals.css">\r
     \r
     <!-- Leaflet CSS for Maps -->\r
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />\r
@@ -509,4 +506,4 @@ import{i as e,n as t,t as n}from"./jsx-runtime-BnxRlLMJ.js";import{t as r}from".
         </div>\r
 </body>\r
 \r
-</html>`,o=n(),s=()=>((0,i.useEffect)(()=>{try{r(()=>import(`./customer-dashboard-BAQzeaKT.js`),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./customer-dashboard-interactive-nDQa-_tK.js`),[]),r(()=>import(`./customer-realtime-tracking-BID4p_fO.js`),[])}catch(e){console.error(`Failed to inject customer dashboard modules:`,e)}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`customer-dashboard-body bg-shade-dark`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};
+</html>`,o=n(),s=()=>((0,i.useEffect)(()=>{let e=!0;try{r(()=>import(`./customer-dashboard-BM2T8Ib9.js`).then(()=>{e&&typeof window.initCustomerDashboard==`function`&&window.initCustomerDashboard(!0)}),__vite__mapDeps([0,1,2,3,4,5,6])),r(()=>import(`./customer-dashboard-interactive-nDQa-_tK.js`),[]),r(()=>import(`./customer-realtime-tracking-BID4p_fO.js`),[])}catch(e){console.error(`Failed to inject customer dashboard modules:`,e)}return()=>{e=!1}},[]),(0,o.jsx)(i.Fragment,{children:(0,o.jsx)(`div`,{className:`customer-dashboard-body bg-shade-dark`,dangerouslySetInnerHTML:{__html:a}})}));export{s as default};

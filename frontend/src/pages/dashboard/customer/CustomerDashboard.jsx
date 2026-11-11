@@ -7,13 +7,19 @@ import './customer-interactive-elements.css';
 
 const CustomerDashboard = () => {
     useEffect(() => {
+        let isMounted = true;
         try {
-            import('./customer-dashboard.js');
+            import('./customer-dashboard.js').then(() => {
+                if (isMounted && typeof window.initCustomerDashboard === 'function') {
+                    window.initCustomerDashboard(true);
+                }
+            });
             import('./customer-dashboard-interactive.js');
             import('./customer-realtime-tracking.js');
         } catch(err) {
             console.error("Failed to inject customer dashboard modules:", err);
         }
+        return () => { isMounted = false; };
     }, []);
 
     return (

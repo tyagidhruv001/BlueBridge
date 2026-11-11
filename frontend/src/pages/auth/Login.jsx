@@ -96,6 +96,56 @@ const Login = () => {
         }
     };
 
+    const handleDemoLogin = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            let demoUserData = null;
+            try {
+                const res = await API.auth.getDemoUser(role);
+                if (res && res.user) {
+                    demoUserData = res.user;
+                }
+            } catch (backendErr) {
+                console.warn('Backend demo-user endpoint unavailable, using local demo profile:', backendErr);
+            }
+
+            if (!demoUserData) {
+                demoUserData = {
+                    uid: role === 'customer' ? 'demo-customer-101' : 'demo-worker-101',
+                    name: role === 'customer' ? 'Aarav Patel (Demo)' : 'Ramesh Kumar (Demo)',
+                    phone: role === 'customer' ? '+919876543210' : '+919876543211',
+                    email: `${role}.demo@bluebridge.in`,
+                    role: role,
+                    loggedIn: true,
+                    isVerified: true,
+                    wallet: { balance: 2500 },
+                    profile: role === 'worker' ? {
+                        category: 'plumber',
+                        profession: 'plumber',
+                        skills: ['Plumber', 'Pipe Repair', 'Leak Detection'],
+                        rating_avg: 4.8,
+                        experience_years: 6,
+                        base_price: 450,
+                        is_online: true
+                    } : {
+                        address: 'Flat 402, Green View Apartments, Mumbai',
+                        city: 'Mumbai',
+                        pincode: '400001'
+                    }
+                };
+            }
+
+            Storage.set('BlueBridge_user', demoUserData);
+            Storage.set('BlueBridge_user_role', role);
+            navigate(`/dashboard/${role}`);
+        } catch (demoErr) {
+            setError('Could not start demo session: ' + (demoErr.message || demoErr));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const roleText = role === 'customer' ? 'Customer' : 'Worker';
     const cardColorClass = role === 'customer' ? 'cyber-blue' : 'neon-orange';
     const btnColorClass = role === 'customer' ? 'btn-neon-blue' : 'btn-neon-orange';
@@ -158,6 +208,20 @@ const Login = () => {
                     </div>
                     <button type="submit" className={`btn ${btnColorClass} btn-lg`} disabled={isLoading} style={{ width: '100%', marginTop: '1.5rem' }}>
                         {!isLoading ? <span>Sign In</span> : <div className="spinner spinner-sm"></div>}
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', margin: '1.25rem 0 0.75rem', gap: '0.75rem' }}>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--color-border, #E5E9E5)' }}></div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary, #68736F)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>or instant demo</span>
+                        <div style={{ flex: 1, height: '1px', background: 'var(--color-border, #E5E9E5)' }}></div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={handleDemoLogin}
+                        disabled={isLoading}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', display: 'flex', justifyContent: 'center', gap: '0.5rem', fontWeight: 600 }}
+                    >
+                        <span>⚡ Continue as Demo {roleText}</span>
                     </button>
                     <div className="auth-footer">
                         <p>Don't have an account? <Link to={`/auth/signup?role=${role}`} className="link">Sign Up</Link></p>
